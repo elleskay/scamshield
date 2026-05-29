@@ -1,0 +1,107 @@
+app: scamshield
+version: 1
+# MVP scope: the citizen-facing check-and-report spine that is shippable without
+# device-native work.
+#   IN  - check a message for scams, see a verdict; report a scam; async intake
+#         via SQS; push when a report is marked a scam; input validation; no
+#         secrets in the bundle.
+#   OUT (Phase 2, deferred) - native call blocking / identification and SMS
+#         filtering (iOS Call Directory + Message Filter, Android
+#         CallScreeningService). These cannot be done in JS and require signed
+#         real-device verification; they get verify: native requirements later.
+#   MVP auth is minimal: checks are anonymous; a report carries an opaque device
+#         token. Real account auth is deferred.
+requirements:
+  - id: SCAM-CHECK-001
+    title: User can check a suspicious message and see a verdict
+    category: functional
+    verify: e2e
+    platforms: [ios, android]
+    severity: high
+    given: the user is on the Check screen
+    when: they paste a message with a link and a lure word and tap Check
+    then: a SCAM or SUSPICIOUS verdict is shown with a short reason
+    tags: [check]
+
+  - id: SCAM-CHECK-002
+    title: An ordinary message is reported clean
+    category: data
+    verify: unit
+    severity: medium
+    given: the offline classifier
+    when: it scores a message with no links or pressure language
+    then: it returns a CLEAN verdict
+
+  - id: SCAM-CHECK-003
+    title: Check button is disabled until a message is entered
+    category: ui
+    verify: component
+    severity: medium
+    given: the Check screen just rendered with an empty input
+    when: no text has been entered
+    then: the Check button is disabled, and enables once text is present
+
+  - id: SCAM-CLASSIFY-001
+    title: Link plus lure is classified as scam
+    category: data
+    verify: unit
+    severity: high
+    given: the classifier heuristic
+    when: it scores a message containing both a URL and an urgency lure
+    then: it returns verdict scam with score >= 0.8
+
+  - id: SCAM-API-001
+    title: The check endpoint classifies a message
+    category: functional
+    verify: integration
+    severity: high
+    given: the running API
+    when: a client POSTs a message to /reports/check
+    then: it responds 200 with a verdict, score, and reason
+
+  - id: SCAM-API-002
+    title: The check endpoint rejects invalid input
+    category: security
+    verify: integration
+    severity: high
+    given: the running API with validation enabled
+    when: a client POSTs an empty body or an unknown field to /reports/check
+    then: it responds 400 and does not process the request
+
+  - id: SCAM-REPORT-001
+    title: A user can report a flagged message and gets a confirmation
+    category: functional
+    verify: e2e
+    platforms: [ios, android]
+    severity: critical
+    given: a user viewing a SCAM or SUSPICIOUS verdict
+    when: they submit it as a report
+    then: the API enqueues it, returns a report id, and the app shows a confirmation
+    tags: [report, journey]
+
+  - id: SCAM-REPORT-002
+    title: The report-intake consumer processes a report idempotently
+    category: data
+    verify: integration
+    severity: high
+    given: a report message on the intake queue
+    when: the consumer processes it (including a duplicate delivery)
+    then: it classifies and persists exactly once, keyed on the report id
+
+  - id: SCAM-PUSH-001
+    title: The reporter is notified when their report is marked a scam
+    category: functional
+    verify: integration
+    severity: high
+    given: a processed report classified as scam and a registered device token
+    when: processing completes
+    then: a push notification is sent to that device token
+
+  - id: SCAM-SEC-001
+    title: No secrets are shipped in the mobile bundle
+    category: security
+    verify: manual
+    severity: critical
+    given: a release build of the app
+    when: the bundle is inspected
+    then: no API keys or signing secrets are present, only EXPO_PUBLIC_ values
