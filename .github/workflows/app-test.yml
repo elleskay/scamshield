@@ -57,22 +57,20 @@ jobs:
         run: |
           curl -Ls https://get.maestro.mobile.dev | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
-      - name: Allow cleartext to the local API (e2e build only)
-        # Production app.json keeps usesCleartextTraffic:false (HTTPS-only). The
-        # e2e talks to a local http://localhost:3000 API, so permit cleartext just
-        # for this build. Without this, fetch is blocked and the report journey
-        # cannot reach the API (and check silently falls back to the offline
-        # heuristic, masking the API path).
-        run: |
-          node -e "const fs=require('fs');const p='apps/app/app.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.expo.android.usesCleartextTraffic=true;fs.writeFileSync(p,JSON.stringify(j,null,2))"
       - name: Prebuild Android project
         working-directory: apps/app
         run: npx expo prebuild --platform android --no-install
-      - name: Confirm cleartext applied to the manifest
+      - name: Permit cleartext to the local API (e2e build only)
+        # The e2e talks to a local http://10.0.2.2:3000 API; Android blocks cleartext
+        # by default. Patch the generated manifest directly (app.json's
+        # usesCleartextTraffic is not a real Expo key and is ignored; production
+        # should use expo-build-properties). Test-only, not committed.
         run: |
-          grep -q 'usesCleartextTraffic="true"' apps/app/android/app/src/main/AndroidManifest.xml \
+          MANIFEST=apps/app/android/app/src/main/AndroidManifest.xml
+          sed -i 's/<application /<application android:usesCleartextTraffic="true" /' "$MANIFEST"
+          grep -q 'usesCleartextTraffic="true"' "$MANIFEST" \
             && echo "cleartext: enabled" \
-            || { echo "cleartext NOT in manifest"; exit 1; }
+            || { echo "failed to set cleartext in manifest"; exit 1; }
       - name: Build release APK (JS bundled)
         # A debug APK expects a Metro dev server for the JS bundle; in CI there is
         # none, so the app would launch to an error screen and Maestro finds no UI.
