@@ -1,0 +1,122 @@
+name: app-test
+
+# Tests the real scamshield app + API (the platform ci.yml only self-tests the
+# template scaffolds). Three jobs: fast JS layers (jest + vitest), the real
+# Android-emulator Maestro e2e, then a merged spec-coverage report.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  COV: results.jsonl
+
+jobs:
+  js-spec:
+    name: JS layers (jest-expo + vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run -w @platform/spec-test build
+      - name: Unit + component (jest-expo)
+        run: npm run test:unit -w @app/scamshield
+        env:
+          SPEC_COVERAGE_FILE: ${{ github.workspace }}/.spec-coverage/${{ env.COV }}
+      - name: API integration (vitest)
+        run: npm test -w @service/scamshield-api
+        env:
+          SPEC_COVERAGE_FILE: ${{ github.workspace }}/.spec-coverage/${{ env.COV }}
+      - name: Upload JS coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: cov-js
+          path: .spec-coverage/${{ env.COV }}
+          if-no-files-found: error
+
+  e2e-android:
+    name: Maestro e2e (Android emulator)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - run: npm ci
+      - run: npm run -w @platform/spec-test build
+      - name: Install Maestro
+        run: |
+          curl -Ls https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Prebuild Android project
+        working-directory: apps/app
+        run: npx expo prebuild --platform android --no-install
+      - name: Build debug APK
+        working-directory: apps/app/android
+        run: ./gradlew assembleDebug
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Run Maestro on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          SPEC_COVERAGE_FILE: ${{ github.workspace }}/.spec-coverage/${{ env.COV }}
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            adb install -r apps/app/android/app/build/outputs/apk/debug/app-debug.apk
+            (cd apps/app && maestro test .maestro --format junit --output maestro.xml)
+            node packages/spec-test/dist/maestro.js --report apps/app/maestro.xml
+      - name: Upload e2e coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cov-e2e
+          path: .spec-coverage/${{ env.COV }}
+          if-no-files-found: warn
+
+  gate:
+    name: Spec coverage (merged)
+    runs-on: ubuntu-latest
+    needs: [js-spec, e2e-android]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run -w @platform/spec-test build
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Merge coverage
+        run: |
+          mkdir -p .spec-coverage
+          cat artifacts/cov-*/${{ env.COV }} > .spec-coverage/${{ env.COV }} 2>/dev/null || true
+          echo "merged $(wc -l < .spec-coverage/${{ env.COV }}) coverage rows"
+      - name: Spec coverage report
+        # Informational: the strict 100% gate blocks at DEPLOY time. Here we report
+        # the number and let it pass even though SCAM-SEC-001 (manual, needs a
+        # signed real-device bundle inspection) keeps coverage below 100.
+        run: |
+          node packages/spec-test/dist/cli.js --spec specs/scamshield.yml \
+            --coverage .spec-coverage/${{ env.COV }} \
+            --verification-dir verification --app-version 0.1.0 \
+            --out spec-coverage.md || true
+          echo "## Spec coverage" >> "$GITHUB_STEP_SUMMARY"
+          cat spec-coverage.md >> "$GITHUB_STEP_SUMMARY"
