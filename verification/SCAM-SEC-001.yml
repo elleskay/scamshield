@@ -1,0 +1,12 @@
+# Manual requirement: no secrets in the release bundle. Intentionally UNSIGNED
+# until a real release build is inspected. To verify: build the app (eas build),
+# extract the bundle, grep for keys/tokens, confirm only EXPO_PUBLIC_* values are
+# present, then fill app_version/date, `spec-attest` to stamp, and commit signed.
+requirement: SCAM-SEC-001
+app_version: 0.1.0
+os_tested: "n/a"
+device: release-bundle-inspection
+date: 2026-05-30
+tester: pending-real-build
+evidence: https://example.com/evidence/scam-sec-001-bundle-scan.txt
+# signature: <run spec-attest after a real bundle inspection>

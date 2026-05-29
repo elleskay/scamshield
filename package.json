@@ -1,16 +1,17 @@
 {
-  "name": "mobile-platform",
+  "name": "scamshield",
   "version": "0.1.0",
   "private": true,
-  "description": "TypeScript platform template for shipping React Native (Expo) apps with a NestJS API to AWS serverless.",
+  "description": "ScamShield (unofficial): check-and-report scam app (Expo) + NestJS API, built on the mobile-platform template.",
   "workspaces": [
     "apps/*",
     "services/*",
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "echo 'Platform template has no app source. Apps add their own typecheck script.'",
-    "lint": "echo 'Platform template has no app source. Apps add their own lint script.'",
+    "typecheck": "npm run typecheck -w @app/scamshield && npm run typecheck -w @service/scamshield-api",
+    "lint": "npm run lint -w @app/scamshield && npm run lint -w @service/scamshield-api",
+    "test:spec": "node scripts/run-spec.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

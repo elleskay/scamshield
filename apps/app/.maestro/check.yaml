@@ -1,0 +1,12 @@
+appId: com.elleskay.scamshield
+name: "[SCAM-CHECK-001] check a suspicious message shows a verdict"
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "message-input"
+- inputText: "URGENT verify your bank http://evil.example"
+- tapOn:
+    id: "check-button"
+- assertVisible:
+    id: "verdict"

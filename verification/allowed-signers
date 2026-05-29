@@ -1,0 +1,4 @@
+# SSH allowed-signers (git gpg.ssh.allowedSignersFile format). Only people listed
+# here may attest native/manual verification artifacts. Empty = attestation check
+# skips (and the gate reports manual reqs unverified). Add a tester's signing key:
+#   elleskay@example.com namespaces="git" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5...

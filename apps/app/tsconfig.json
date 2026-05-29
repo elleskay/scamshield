@@ -1,0 +1,12 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
+  "comment": "tests/ are typechecked at runtime by jest (jest-expo); excluded here so app typecheck does not need jest globals or the spec-test subpath.",
+  "exclude": ["tests", "node_modules", ".expo", "dist", ".maestro"]
+}

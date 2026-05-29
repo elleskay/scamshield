@@ -1,0 +1,16 @@
+appId: com.elleskay.scamshield
+name: "[SCAM-REPORT-001] report a flagged message and see a confirmation"
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "message-input"
+- inputText: "You won a prize, claim now http://evil.example"
+- tapOn:
+    id: "check-button"
+- assertVisible:
+    id: "verdict"
+- tapOn:
+    id: "report-button"
+- assertVisible:
+    id: "report-confirmation"

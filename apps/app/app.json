@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "ScamShield (unofficial)",
+    "slug": "scamshield",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "scamshield",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.elleskay.scamshield",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.elleskay.scamshield",
+      "usesCleartextTraffic": false
+    },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
