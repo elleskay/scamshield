@@ -68,12 +68,21 @@ jobs:
       - name: Prebuild Android project
         working-directory: apps/app
         run: npx expo prebuild --platform android --no-install
+      - name: Confirm cleartext applied to the manifest
+        run: |
+          grep -q 'usesCleartextTraffic="true"' apps/app/android/app/src/main/AndroidManifest.xml \
+            && echo "cleartext: enabled" \
+            || { echo "cleartext NOT in manifest"; exit 1; }
       - name: Build release APK (JS bundled)
         # A debug APK expects a Metro dev server for the JS bundle; in CI there is
         # none, so the app would launch to an error screen and Maestro finds no UI.
         # The release APK embeds the JS bundle. Expo prebuild defaults the release
         # signingConfig to the debug keystore, so it installs on the emulator.
+        # EXPO_PUBLIC_API_URL is inlined here: 10.0.2.2 is the emulator's alias for
+        # the host loopback, where the API runs (more reliable than adb reverse).
         working-directory: apps/app/android
+        env:
+          EXPO_PUBLIC_API_URL: http://10.0.2.2:3000
         run: ./gradlew assembleRelease
       - name: Build API (for the report journey)
         run: npm run build -w @service/scamshield-api
@@ -90,12 +99,12 @@ jobs:
           arch: x86_64
           profile: pixel_6
           script: |
-            # Start the real API and bridge the emulator's localhost:3000 to it,
-            # so the report journey (UI -> API enqueues -> reportId -> confirmation)
-            # is exercised end to end, not stubbed.
+            # Start the real API on the host:3000. The app reaches it at
+            # http://10.0.2.2:3000 (emulator alias for the host loopback), so the
+            # report journey (UI -> API enqueues -> reportId -> confirmation) runs
+            # end to end, not stubbed.
             node services/api/dist/main.js &
             for i in $(seq 1 30); do curl -sf http://localhost:3000/health && break; sleep 1; done
-            adb reverse tcp:3000 tcp:3000
             adb install -r apps/app/android/app/build/outputs/apk/release/app-release.apk
             (cd apps/app && maestro test .maestro --format junit --output maestro.xml)
             node packages/spec-test/dist/maestro.js --report apps/app/maestro.xml
