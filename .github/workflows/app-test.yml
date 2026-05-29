@@ -57,6 +57,14 @@ jobs:
         run: |
           curl -Ls https://get.maestro.mobile.dev | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Allow cleartext to the local API (e2e build only)
+        # Production app.json keeps usesCleartextTraffic:false (HTTPS-only). The
+        # e2e talks to a local http://localhost:3000 API, so permit cleartext just
+        # for this build. Without this, fetch is blocked and the report journey
+        # cannot reach the API (and check silently falls back to the offline
+        # heuristic, masking the API path).
+        run: |
+          node -e "const fs=require('fs');const p='apps/app/app.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.expo.android.usesCleartextTraffic=true;fs.writeFileSync(p,JSON.stringify(j,null,2))"
       - name: Prebuild Android project
         working-directory: apps/app
         run: npx expo prebuild --platform android --no-install
