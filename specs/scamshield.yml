@@ -329,6 +329,20 @@ requirements:
     when: it renders
     then: it shows a conversational outcome label, the scam-vs-spam note, and an AI attribution
 
+  # Phase 4: durable Postgres persistence (the role's RDBMS + scale requirement).
+  # Default is in-memory; Postgres is used when DATABASE_URL is set, making the
+  # report store, clustering and stats durable and correct across the split
+  # Lambda + SQS topology.
+  - id: SCAM-DB-001
+    title: Reports, clustering and stats persist durably in Postgres
+    category: functional
+    verify: integration
+    severity: high
+    given: a Postgres-backed store
+    when: a report is added, processed, listed, and verified
+    then: it persists with idempotent processing, cluster counts, status, and stats
+    tags: [persistence]
+
   # Phase 3: real LLM classifier integration (key-gated, deterministic default).
   - id: SCAM-CLASSIFY-002
     title: The classifier uses the LLM when configured and falls back on error

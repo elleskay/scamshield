@@ -15,6 +15,16 @@ jobs:
   js-spec:
     name: JS layers (jest-expo + vitest)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: scamshield_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,10 +37,13 @@ jobs:
         run: npm run test:unit -w @app/scamshield
         env:
           SPEC_COVERAGE_FILE: ${{ github.workspace }}/.spec-coverage/${{ env.COV }}
-      - name: API integration (vitest)
+      - name: API integration (vitest) + Postgres store
         run: npm test -w @service/scamshield-api
         env:
           SPEC_COVERAGE_FILE: ${{ github.workspace }}/.spec-coverage/${{ env.COV }}
+          # Exercises the Postgres store (SCAM-DB-001). The app's own DATABASE_URL
+          # stays unset, so AppModule tests still use the in-memory store.
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/scamshield_test
       - name: Upload JS coverage
         uses: actions/upload-artifact@v4
         with:

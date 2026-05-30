@@ -1,6 +1,7 @@
 import { describe, vi } from "vitest";
 import { test, expect } from "@platform/spec-test/vitest";
 import { ReportsService } from "./reports.service";
+import { InMemoryStore } from "./reports.store";
 import { ClassifierService } from "../classifier/classifier.service";
 import { OpenSearchService } from "../search/opensearch.service";
 import type { PushService } from "../push/push.service";
@@ -9,7 +10,8 @@ function makeService() {
   const classifier = new ClassifierService();
   const search = new OpenSearchService();
   const push = { notifyScam: vi.fn().mockResolvedValue(true) };
-  const service = new ReportsService(classifier, search, push as unknown as PushService);
+  const store = new InMemoryStore();
+  const service = new ReportsService(store, classifier, search, push as unknown as PushService);
   return { service, classifier, push };
 }
 
