@@ -172,7 +172,7 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut: () => void 
         </div>
 
         <div style={S.blockPanel}>
-          <span style={S.muted}>Add scam numbers to the blocklist (space or comma separated):</span>
+          <span style={S.muted}>Add scam numbers to the blocklist (comma or newline separated):</span>
           <div style={S.blockRow}>
             <input
               data-testid="blocklist-input"
