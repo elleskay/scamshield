@@ -59,6 +59,20 @@ export class PostgresStore implements ReportsStore {
   private readonly logger = new Logger(PostgresStore.name);
   private pool!: Pool;
 
+  // Keep this app's tables in their own schema so a shared Postgres/Neon database
+  // (which may already host an unrelated `public.reports` etc.) is never clobbered.
+  // A bare identifier is enforced so it is safe to interpolate into DDL.
+  private readonly schema = (process.env.DATABASE_SCHEMA ?? "scamshield").replace(/[^a-z0-9_]/gi, "");
+  private get reports(): string {
+    return `${this.schema}.reports`;
+  }
+  private get processed(): string {
+    return `${this.schema}.processed_reports`;
+  }
+  private get counters(): string {
+    return `${this.schema}.counters`;
+  }
+
   constructor(private readonly connectionString: string) {}
 
   async init(): Promise<void> {
@@ -69,7 +83,8 @@ export class PostgresStore implements ReportsStore {
       ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
       max: 2,
     });
-    await this.pool.query(`CREATE TABLE IF NOT EXISTS reports (
+    await this.pool.query(`CREATE SCHEMA IF NOT EXISTS ${this.schema}`);
+    await this.pool.query(`CREATE TABLE IF NOT EXISTS ${this.reports} (
       report_id TEXT PRIMARY KEY,
       device_token TEXT,
       channel TEXT,
@@ -80,25 +95,29 @@ export class PostgresStore implements ReportsStore {
       created_at TEXT NOT NULL,
       reviewed_at TEXT
     )`);
-    await this.pool.query(`CREATE TABLE IF NOT EXISTS processed_reports (report_id TEXT PRIMARY KEY)`);
+    await this.pool.query(`CREATE TABLE IF NOT EXISTS ${this.processed} (report_id TEXT PRIMARY KEY)`);
     await this.pool.query(
-      `CREATE TABLE IF NOT EXISTS counters (name TEXT PRIMARY KEY, value BIGINT NOT NULL DEFAULT 0)`,
+      `CREATE TABLE IF NOT EXISTS ${this.counters} (name TEXT PRIMARY KEY, value BIGINT NOT NULL DEFAULT 0)`,
     );
-    await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_reports_device ON reports(device_token)`);
-    await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_reports_cluster ON reports(cluster_key)`);
-    this.logger.log("Postgres store ready");
+    await this.pool.query(
+      `CREATE INDEX IF NOT EXISTS idx_reports_device ON ${this.reports}(device_token)`,
+    );
+    await this.pool.query(
+      `CREATE INDEX IF NOT EXISTS idx_reports_cluster ON ${this.reports}(cluster_key)`,
+    );
+    this.logger.log(`Postgres store ready (schema ${this.schema})`);
   }
 
   async recordCheck(): Promise<void> {
     await this.pool.query(
-      `INSERT INTO counters(name, value) VALUES ('checks', 1)
-       ON CONFLICT (name) DO UPDATE SET value = counters.value + 1`,
+      `INSERT INTO ${this.counters}(name, value) VALUES ('checks', 1)
+       ON CONFLICT (name) DO UPDATE SET value = ${this.counters}.value + 1`,
     );
   }
 
   async addReport(r: NewReport): Promise<void> {
     await this.pool.query(
-      `INSERT INTO reports (report_id, device_token, channel, snippet, created_at, status)
+      `INSERT INTO ${this.reports} (report_id, device_token, channel, snippet, created_at, status)
        VALUES ($1, $2, $3, $4, $5, 'pending') ON CONFLICT (report_id) DO NOTHING`,
       [r.reportId, r.deviceToken ?? null, r.channel ?? null, r.snippet, r.createdAt],
     );
@@ -106,7 +125,7 @@ export class PostgresStore implements ReportsStore {
 
   async markProcessedIfNew(reportId: string): Promise<boolean> {
     const res = await this.pool.query(
-      `INSERT INTO processed_reports(report_id) VALUES ($1)
+      `INSERT INTO ${this.processed}(report_id) VALUES ($1)
        ON CONFLICT (report_id) DO NOTHING RETURNING report_id`,
       [reportId],
     );
@@ -115,14 +134,14 @@ export class PostgresStore implements ReportsStore {
 
   async setSuggestion(reportId: string, verdict: Verdict, key: string): Promise<void> {
     await this.pool.query(
-      `UPDATE reports SET suggested_verdict = $2, cluster_key = $3 WHERE report_id = $1`,
+      `UPDATE ${this.reports} SET suggested_verdict = $2, cluster_key = $3 WHERE report_id = $1`,
       [reportId, verdict, key],
     );
   }
 
   async clusterCount(key: string): Promise<number> {
     const res = await this.pool.query<{ n: string }>(
-      `SELECT count(*) AS n FROM reports WHERE cluster_key = $1`,
+      `SELECT count(*) AS n FROM ${this.reports} WHERE cluster_key = $1`,
       [key],
     );
     return Number(res.rows[0]?.n ?? 0);
@@ -130,7 +149,7 @@ export class PostgresStore implements ReportsStore {
 
   async verify(reportId: string, verdict: Verdict): Promise<StoredReport | null> {
     const res = await this.pool.query<Row>(
-      `UPDATE reports SET status = $2, reviewed_at = $3 WHERE report_id = $1 RETURNING ${COLS}`,
+      `UPDATE ${this.reports} SET status = $2, reviewed_at = $3 WHERE report_id = $1 RETURNING ${COLS}`,
       [reportId, verdict, new Date().toISOString()],
     );
     return res.rows[0] ? toStored(res.rows[0]) : null;
@@ -138,23 +157,25 @@ export class PostgresStore implements ReportsStore {
 
   async listByDevice(deviceToken: string): Promise<ReportSummary[]> {
     const res = await this.pool.query<Row>(
-      `SELECT ${COLS} FROM reports WHERE device_token = $1 ORDER BY created_at DESC`,
+      `SELECT ${COLS} FROM ${this.reports} WHERE device_token = $1 ORDER BY created_at DESC`,
       [deviceToken],
     );
     return res.rows.map(toSummaryRow);
   }
 
   async listAll(): Promise<AdminReport[]> {
-    const res = await this.pool.query<Row>(`SELECT ${COLS} FROM reports ORDER BY created_at DESC`);
+    const res = await this.pool.query<Row>(
+      `SELECT ${COLS} FROM ${this.reports} ORDER BY created_at DESC`,
+    );
     return res.rows.map(toSummaryRow);
   }
 
   async stats(): Promise<Stats> {
     const res = await this.pool.query<{ checks: string; reports: string; confirmed: string }>(
       `SELECT
-         (SELECT coalesce(value, 0) FROM counters WHERE name = 'checks') AS checks,
-         (SELECT count(*) FROM reports) AS reports,
-         (SELECT count(*) FROM reports WHERE status = 'scam') AS confirmed`,
+         (SELECT coalesce(value, 0) FROM ${this.counters} WHERE name = 'checks') AS checks,
+         (SELECT count(*) FROM ${this.reports}) AS reports,
+         (SELECT count(*) FROM ${this.reports} WHERE status = 'scam') AS confirmed`,
     );
     const row = res.rows[0];
     return {
