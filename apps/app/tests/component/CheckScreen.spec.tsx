@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
 import CheckScreen from "@/app/(tabs)/index";
+import { checkMessage } from "@/lib/api";
 
 jest.mock("@/lib/api", () => ({
   checkMessage: jest.fn(),
@@ -36,4 +37,18 @@ test("[SCAM-CALL-003] number mode shows a verdict and marks verified callers", a
     expect(screen.getByTestId("verdict")).toBeTruthy();
     expect(screen.getByTestId("verified-badge")).toBeTruthy();
   });
+});
+
+test("[SCAM-WARN-001] a flagged verdict with a link shows a do-not-tap warning", async () => {
+  (checkMessage as jest.Mock).mockResolvedValue({
+    verdict: "scam",
+    score: 0.9,
+    reason: "Link plus lure",
+  });
+  render(<CheckScreen />);
+
+  fireEvent.changeText(screen.getByTestId("message-input"), "verify your bank http://evil.example");
+  fireEvent.press(screen.getByTestId("check-button"));
+
+  expect(await screen.findByTestId("link-warning")).toBeTruthy();
 });

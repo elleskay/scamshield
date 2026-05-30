@@ -298,3 +298,13 @@ requirements:
     given: the stats strip with counter values
     when: it renders
     then: it shows the formatted counts
+
+  # Phase 3: in-app link/scam warning (Q2 2025 warning screens).
+  - id: SCAM-WARN-001
+    title: A flagged verdict with a link shows a do-not-tap warning
+    category: ui
+    verify: component
+    severity: medium
+    given: the Check screen
+    when: a checked message is flagged and contains a link
+    then: a prominent "do not tap links" warning is shown

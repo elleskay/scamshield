@@ -24,6 +24,7 @@ import {
   type Stats,
 } from "@/lib/api";
 import { StatsStrip } from "@/components/StatsStrip";
+import { WarningCard } from "@/components/WarningCard";
 import { getDeviceToken } from "@/lib/device";
 import { brand, palette } from "@/lib/theme";
 
@@ -95,6 +96,10 @@ export default function CheckScreen() {
   const showIntro = !result && !reportId;
   const reportable =
     (result?.kind === "message" || result?.kind === "email") && result.data.verdict !== "clean";
+  const flaggedLink =
+    (result?.kind === "message" || result?.kind === "email") &&
+    result.data.verdict !== "clean" &&
+    /https?:\/\/|\bwww\./.test(mode === "email" ? email : text);
   const verified =
     result?.kind === "number" && result.data.isVerifiedCaller
       ? { label: result.data.label }
@@ -218,6 +223,8 @@ export default function CheckScreen() {
           reportedCount={result.kind === "number" ? undefined : result.data.reportedCount}
         />
       )}
+
+      {flaggedLink && <WarningCard />}
 
       {reportable && !reportId && (
         <Pressable
