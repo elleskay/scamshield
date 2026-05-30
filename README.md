@@ -1,71 +1,75 @@
-# mobile-platform
+# ScamShield (unofficial)
 
-TypeScript platform template for shipping React Native (Expo) apps backed by a NestJS API on AWS serverless. CI/CD, IaC, security, governance, pre-canned IAM, native call/SMS module references, a verified deploy workflow, and a working demo app that proves the patterns end to end.
+A check-and-report anti-scam app: paste a suspicious message, get a verdict, report confirmed scams. A React Native (Expo) app backed by a NestJS API on AWS serverless.
 
-Designed to be cloned per-app, not vendored as a dependency. Sibling to the web `platform` template; this one covers the mobile + NestJS stack the web template deliberately excludes.
+This is a personal portfolio build that mirrors the **stack and shape** of Singapore's ScamShield. It is **not affiliated with, endorsed by, or connected to** the official ScamShield, Open Government Products, GovTech, or the Singapore Police Force. "ScamShield" is used here only to describe what this replica is modeled on.
+
+## Why it exists
+
+Built to demonstrate the stack and engineering practices of the real ScamShield (TypeScript + React, NestJS, PostgreSQL, AWS, IaC, CI/CD, SSDLC, SQS, OpenSearch, ML/LLM classification, push notifications). The point is not feature breadth, it is rigor: every requirement is specified, tested at the right layer, and proven by a real run, including on-device end-to-end and a real cloud deploy.
 
 ## Stack
 
-Modeled on the real ScamShield stack (TypeScript + React + NestJS + PostgreSQL + AWS, citizen-facing iOS/Android app with call blocking, SMS filtering, check-and-report, push notifications, SQS report processing, OpenSearch clustering).
-
 - **App:** Expo (React Native) + Expo Router, TypeScript strict
-- **Native modules:** iOS Call Directory + Message Filter (Swift), Android CallScreeningService + SMS (Kotlin), surfaced through config plugins
-- **API:** NestJS (TypeScript), class-validator + Zod at the boundary, JWT auth
-- **Data:** PostgreSQL (Neon serverless), AWS SQS (report intake), OpenSearch (clustering)
-- **Infra:** AWS Lambda + API Gateway via CDK
-- **Build/deploy:** EAS Build/Submit/Update for the app, GitHub Actions + CDK for the API
-- **Observability:** DataDog, push via APNs/FCM (Expo)
+- **API:** NestJS (TypeScript), class-validator at the boundary, serverless-express on AWS Lambda + API Gateway
+- **Async:** AWS SQS report-intake queue + idempotent worker Lambda
+- **Classifier:** offline heuristic on-device + a server classifier with an LLM hook (deterministic fallback)
+- **Push:** Expo push (APNs/FCM) when a report is confirmed a scam
+- **Data:** PostgreSQL-ready (Neon), OpenSearch-ready for clustering similar reports
+- **Infra:** AWS CDK (Lambda + API Gateway HTTP API + SQS), GitHub Actions
+- Built on a custom mobile platform template: https://github.com/elleskay/mobile-platform
 
-## What's inside
+## What is proven (not just written)
 
-| Area | Where |
-|---|---|
-| CI (typecheck, lint, expo-doctor, nest build, cdk synth) | `.github/workflows/ci.yml` |
-| Security scanning (CodeQL, secrets, npm audit) | `.github/workflows/security.yml` |
-| Mobile build pipeline (EAS build + submit + OTA update) | `.github/workflows/mobile-build.yml` |
-| API deploy pipeline (build, CDK deploy, smoke test) | `.github/workflows/deploy-api.yml` |
-| Reusable CDK construct (Lambda + API Gateway + SQS + optional OpenSearch) | `infra/cdk/_template/lib/constructs/NestjsApi.ts` |
-| Full CDK package scaffold (copy and rename per app) | `infra/cdk/_template/` |
-| One-time AWS setup stack (OIDC + IAM role) | `infra/cdk/_setup/` |
-| Pre-canned IAM policy for the deploy user/role | `infra/iam/cdk-deploy-policy.json` |
-| Expo app reference overlay (native modules, push, config plugins) | `apps/_template/` |
-| **Working demo app** (proves the patterns end to end) | `apps/_demo/` |
-| **NestJS API service scaffold** (reports, health, SQS consumer, OpenSearch) | `services/_template/` |
-| Smoke-test script (API health + auth + queue reachability) | `scripts/verify-deploy.sh` |
-| **Spec-driven test system** (zod-validated YAML spec, `specTest` runner, 100% coverage gate, ESLint rule) | `packages/spec-test/` |
-| Stack, security, testing, mobile guidance | `docs/`, see `docs/TESTING.md` and `docs/MOBILE.md` |
-| TS/ESLint/Prettier base configs | root |
-| Conventional commits + commitlint | `commitlint.config.mjs` |
+Every requirement in `specs/scamshield.yml` is verified by a real run. The coverage gate is **10/10**:
 
-## How to use
+| Layer | Requirements | Proven by |
+|---|---|---|
+| Unit (data) | classifier verdicts | jest-expo, in CI |
+| Component (ui) | check button enable/disable | jest-expo + React Native Testing Library, in CI |
+| Integration (API) | `/reports/check` 200, validation 400s, idempotent SQS consumer, push on scam | vitest + supertest, in CI |
+| E2E (journey) | check-a-message and report-a-scam flows | **Maestro on a real Android emulator against the live API**, in CI |
+| Manual (security) | no secrets in the release bundle | signed verification artifact (real bundle scan) |
 
-1. Create your app repo from this template:
-   ```bash
-   gh repo create my-app --template elleskay/mobile-platform --clone --private
-   cd my-app
-   ```
-2. Create your real app at `apps/app/` (copy `apps/_demo/` and rename, then overlay the native module references from `apps/_template/`). The platform's `apps/_demo/` is sacred so CI's self-test keeps working; don't replace it.
-3. Create your real API at `services/api/` (copy `services/_template/` and rename).
-4. Rename `infra/cdk/_template/` to `infra/cdk/<your-app>/`. Edit `bin/app.ts` to match the stack id you want.
-5. Run the setup CDK to provision the OIDC role: `cd infra/cdk/_setup && npm install && npx cdk deploy -c repo=<owner>/<your-app>`. Copy the output role ARN.
-6. Configure AWS (OIDC + the IAM policy from `infra/iam/`), set the GitHub secrets and variables, push. The deploy workflow handles the API; EAS handles the app.
+Beyond CI, the API was deployed to AWS for real (`cdk deploy`) and passed a full post-deploy smoke test (6/6), then torn down. The deploy path is reproducible via `infra/cdk`.
 
-Full step-by-step in `docs/SETUP.md`, `docs/DEPLOY.md`, and `docs/MOBILE.md`. Gotchas the platform has hit are documented in `docs/DEPLOY.md`.
+## How it is tested (spec-driven gate)
 
-## Self-test
+The build is driven by a YAML spec with one ID per requirement, and a coverage gate that refuses to pass unless every requirement has a passing test at its declared `verify` level (`unit | component | integration | contract | e2e | native | manual`). Native/manual requirements (things a JS test cannot prove, like OS-level behavior or a no-secrets bundle scan) are satisfied by a signed, freshness-checked verification artifact rather than a green checkmark nobody earned. See `docs/TESTING.md`.
 
-The platform's CI builds `apps/_demo/` (expo prebuild dry-run + typecheck), builds `services/_template/`, and runs `cdk synth` against the construct on every push. If anything breaks, CI fails before a cloned app picks it up.
+## Run it
 
-## Opinions
+```bash
+npm install
+npm run test:spec        # jest-expo + vitest, then the coverage gate
+npm run -w @app/scamshield start          # Expo dev server
+npm run -w @service/scamshield-api start:dev   # API on :3000
+```
 
-- **Expo, not bare RN.** Managed workflow with config plugins for the native call/SMS modules. Maximum JS/TS reuse with the API. If you need a native capability no plugin covers, prebuild and write the module; don't fork to bare unless forced.
-- **Serverless API only.** NestJS on Lambda + API Gateway. If you need always-on containers, swap the construct for Fargate; the app layer is unaffected.
-- **Constructs are copied, not imported.** Each app pins its version of `NestjsApi`. Breaking changes don't propagate without explicit action.
-- **The platform dogfoods itself.** `apps/_demo/` and `services/_template/` are built by the same workflows apps inherit.
-- **Native call blocking and SMS filtering are platform-native, not JS.** The app reaches them through documented extension points (see `docs/MOBILE.md`); the JS layer never pretends to do what only Swift/Kotlin can.
+Deploy the API (needs an AWS account, see `docs/DEPLOY.md` and `docs/SETUP.md`):
 
-The smaller the surface area, the fewer wrong-by-default ways apps can diverge.
+```bash
+cd infra/cdk/_template && npm install && npx cdk deploy
+```
 
-## License
+## Structure
 
-MIT.
+```
+apps/app/            Expo app (check + report screens, classifier, API client)
+services/api/        NestJS API (reports check/submit, SQS consumer, classifier, push)
+infra/cdk/           CDK: NestjsApi construct (Lambda + API Gateway + SQS)
+packages/spec-test/  Spec-driven test runner + coverage gate
+specs/scamshield.yml The requirement spec
+verification/        Signed artifacts for native/manual requirements
+.maestro/            (in apps/app) e2e flows
+```
+
+## Scope and roadmap
+
+In scope (the shippable spine): check-and-report, API + SQS intake, push on scam, input validation, no secrets in the bundle.
+
+Deferred to a Phase 2 (the real ScamShield's signature features): native **call blocking / identification** and **SMS filtering**. These cannot be done in JavaScript, they require iOS Call Directory + Message Filter extensions (Swift) and Android CallScreeningService (Kotlin), plus device builds and signed real-device verification. Reference implementations and the wiring live in the platform template.
+
+## Disclaimer
+
+Unofficial, educational/portfolio project. Not the official ScamShield. Do not use it to report real scams; use the official ScamShield channels.
