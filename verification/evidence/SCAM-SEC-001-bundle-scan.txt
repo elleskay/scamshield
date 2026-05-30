@@ -1,0 +1,33 @@
+SCAM-SEC-001 - No secrets in the mobile bundle
+Evidence of release-bundle inspection.
+
+Method
+  - Built the production JS bundle: `expo export --platform android`
+    (Hermes bytecode; string literals are stored in plaintext in the .hbc
+    string table, so a binary-safe scan surfaces any inlined secret).
+  - Bundle: _expo/static/js/android/entry-*.hbc (~2.0 MB)
+  - App version: 0.1.0
+
+Scans (grep -a over the .hbc)
+  1) Secret env-var names (must not appear):
+       JWT_SECRET, CLASSIFIER_API_KEY, AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID,
+       DATABASE_URL, EXPO_TOKEN, EXPO_ACCESS_TOKEN, DD_API_KEY, APNS_KEY
+     RESULT: 0 hits.
+  2) Secret value patterns:
+       AWS keys (AKIA[0-9A-Z]{16}), PEM private keys (-----BEGIN ... PRIVATE KEY-----),
+       JWTs (eyJ...\....), Stripe keys (sk_live/sk_test_...)
+     RESULT: 0 hits.
+  3) URLs present in the bundle:
+       http://localhost:3000  (the app's public default API URL fallback)
+       plus Expo / React Native framework URLs (eascdn, docs.expo.dev, github).
+     No secret or private URLs.
+  4) EXPO_PUBLIC_* values: none baked (EXPO_PUBLIC_API_URL unset at build -> fallback used).
+
+Conclusion
+  No API keys or signing secrets are shipped in the bundle. Only the public API
+  URL and framework strings are present. SCAM-SEC-001 satisfied for app 0.1.0.
+
+Note
+  The app references only EXPO_PUBLIC_API_URL (public by design); all secrets
+  (JWT signing, classifier key, AWS, DataDog, push) live server-side in the API
+  and its Lambda env / GitHub secrets, never in the client.
