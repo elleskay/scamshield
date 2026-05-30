@@ -6,6 +6,9 @@ name: "[SCAM-CHECK-001] check a suspicious message shows a verdict"
 - tapOn:
     id: "message-input"
 - inputText: "URGENT verify your bank http://evil.example"
+# Dismiss the keyboard so the check button (now below the optional sender input)
+# is on-screen and tappable.
+- hideKeyboard
 - tapOn:
     id: "check-button"
 - assertVisible:
