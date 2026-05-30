@@ -1,3 +1,7 @@
+// Must be first: registers Reflect.metadata before any decorated class loads,
+// so the design:paramtypes metadata (emitted by tsc preCompilation) is stored
+// and NestJS DI can resolve constructor injection in the bundle.
+import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import type { ExpressAdapter } from "@nestjs/platform-express";
