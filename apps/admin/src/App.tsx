@@ -104,8 +104,10 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut: () => void 
   const [blockInput, setBlockInput] = useState("");
   const [blockMsg, setBlockMsg] = useState<string | null>(null);
   async function uploadBlocklist() {
+    // Split on comma / semicolon / newline only, NOT spaces: a number like
+    // "+65 9888 7777" contains spaces as formatting and must stay one entry.
     const numbers = blockInput
-      .split(/[\s,;]+/)
+      .split(/[,;\n]+/)
       .map((n) => n.trim())
       .filter(Boolean);
     if (numbers.length === 0) return;
