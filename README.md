@@ -1,6 +1,6 @@
 # ScamShield (unofficial)
 
-An anti-scam app mirroring Singapore's ScamShield: check a suspicious **message, phone number, or email**, get a verdict, report scams and track their status while a **reviewer verifies them** in an admin dashboard, see scam **stats** and "reported N times" clustering, and read scam-awareness **alerts**. A React Native (Expo) tabbed app + a React admin web app, backed by a NestJS API on AWS serverless, plus the native **call-screening / SMS-filtering** layer that JavaScript cannot do.
+An anti-scam app mirroring Singapore's ScamShield: check a suspicious **message, phone number, or email**, get a verdict **with the signals behind it**, report scams and track their status while a **reviewer verifies them** in an admin dashboard (with **search, CSV export, and a scam-number blocklist**), see scam **stats** and "reported N times" clustering, and read scam-awareness **alerts**. A React Native (Expo) tabbed app + a React admin web app, backed by a NestJS API on AWS serverless (durable **Postgres** state), plus the native **call-screening / SMS-filtering** layer that JavaScript cannot do.
 
 This is a personal portfolio build that mirrors the **stack and shape** of Singapore's ScamShield. It is **not affiliated with, endorsed by, or connected to** the official ScamShield, Open Government Products, GovTech, or the Singapore Police Force. "ScamShield" is used here only to describe what this replica is modeled on.
 
@@ -32,7 +32,7 @@ Built to demonstrate the stack and engineering practices of the real ScamShield 
 - **App:** Expo (React Native) + Expo Router, TypeScript strict
 - **API:** NestJS (TypeScript), class-validator at the boundary, serverless-express on AWS Lambda + API Gateway
 - **Async:** AWS SQS report-intake queue + idempotent worker Lambda
-- **Classifier:** offline heuristic on-device + a server classifier with an LLM hook (deterministic fallback)
+- **Classifier:** offline heuristic on-device + a server classifier with an LLM hook (deterministic fallback). Recognizes trusted registered senders (CPF, IRAS, ...), legitimate OTP messages, and scam numbers embedded in text, and returns the signals behind each verdict
 - **Push:** Expo push (APNs/FCM) when a report is confirmed a scam
 - **Data:** Postgres (node-postgres; Neon's pooled endpoint) when `DATABASE_URL` is set, with an in-memory fallback for CI/local; OpenSearch-ready for clustering
 - **Infra:** AWS CDK (Lambda + API Gateway HTTP API + SQS), GitHub Actions
@@ -44,9 +44,9 @@ Every requirement in `specs/scamshield.yml` is verified by a real run at its dec
 
 | Layer | Requirements | Proven by |
 |---|---|---|
-| Unit (data) | message/number/email classifier verdicts, native block decision, blocklist match | jest-expo, in CI |
-| Component (ui) | check button state, verified-caller badge, alerts list, stats strip, link warning | jest-expo + React Native Testing Library, in CI |
-| Integration (API) | check (message/number), blocklist, reports listing, alerts, stats + clustering, admin list/verify/auth, key-gated LLM + fallback, validation 400s, idempotent SQS consumer, push on admin review | vitest + supertest, in CI |
+| Unit (data) | message/number/email classifier verdicts, trusted-sender + OTP + scam-number-in-message handling, verdict signals, native block decision, blocklist match | jest-expo, in CI |
+| Component (ui) | check button state, verified-caller + verified-sender badges, "why this result" signals, alerts list, stats strip, link warning | jest-expo + React Native Testing Library, in CI |
+| Integration (API) | check (message/number/trusted-sender/number-in-message), blocklist + admin upload, reports listing, admin search + CSV export, alerts, stats + clustering, admin list/verify/auth, key-gated LLM + fallback, validation 400s, idempotent SQS consumer, push on admin review, durable Postgres store | vitest + supertest, in CI |
 | E2E (journey) | check message/number/email, report → appears under Reports, **admin verifies a report in the dashboard** | **Maestro (Android emulator)** + **Playwright (admin web)** against a live API, in CI |
 | Manual (security) | no secrets in the release bundle | signed verification artifact (real bundle scan) |
 
@@ -54,7 +54,7 @@ The API runs live on AWS (`cdk deploy`, reproducible via `infra/cdk`); the brows
 
 **Human-in-the-loop:** a report is `pending` until an admin reviews it in the dashboard; the classifier's call is recorded as a suggestion, and the push to the reporter fires on the admin's verdict, mirroring the real "police verify, then notify" flow.
 
-**Persistence:** the report store, idempotent processing, clustering, and stats sit behind a `ReportsStore` boundary with two backends — **Postgres** (`node-postgres`, used when `DATABASE_URL` is set; durable and correct across the split Lambda + SQS topology) and an **in-memory** fallback (CI/local/offline). The Postgres path is proven in CI against a Postgres service container (`SCAM-DB-001`). With the in-memory fallback the live state is per-instance/ephemeral, so set `DATABASE_URL` (a Neon connection string) on the Lambda for durable, multi-instance-correct stats and reports.
+**Persistence:** the report store, idempotent processing, clustering, stats, and the admin-uploaded number blocklist sit behind a `ReportsStore` boundary with two backends — **Postgres** (`node-postgres`, durable and correct across the split Lambda + SQS topology) and an **in-memory** fallback (CI/local/offline). The **live API runs on Postgres** (Neon's pooled endpoint, set via `DATABASE_URL`), with the app's tables isolated in a dedicated `scamshield` schema; the in-memory backend covers CI/local. The Postgres path is proven in CI against a Postgres service container (`SCAM-DB-001`).
 
 The native Android `CallScreeningService` is wired by an Expo config plugin (verified: `expo prebuild` injects it into the manifest and it compiles into the release APK); its block decision is unit-tested, and the on-device call-rejection procedure is in `docs/MOBILE.md`. The iOS Call Directory + Message Filter extensions ship as code but need Apple signing + a device to verify, so they are documented there, not claimed as proven.
 
@@ -111,7 +111,19 @@ specs/scamshield.yml The requirement spec
 - **In-app link warning** for flagged messages with a link.
 - **Key-gated LLM classifier**: real endpoint integration used when configured, deterministic heuristic otherwise; no secret committed.
 
-Not built (out of scope): the WhatsApp ScamShield Bot, HTX/law-enforcement data sharing, real account auth (the admin uses a shared demo token; app checks are anonymous with an opaque device token), and a real scam database / production-grade persistence.
+**Phase 4 (built):** durable **Postgres** persistence behind the `ReportsStore` boundary (Neon in production, in-memory for CI/local), making stats, clustering, and status correct across the split Lambda + SQS topology.
+
+**Phase 5 (built):** more of the real product's surface.
+- **Trusted-sender whitelist**: a message from a registered Sender ID (CPF, IRAS, MOM, MAS, ...) is shown as a verified sender.
+- **Scam number within a message**: a known scam number in the body escalates the verdict and is surfaced.
+- **Admin search + CSV export**: filter reports by content/status/channel/device and export a date-ranged CSV.
+
+**Phase 6 (built):** quality and operations.
+- **OTP-aware classification**: a genuine one-time-passcode message (no link) is treated as safe instead of flagged.
+- **Per-signal "why"**: each verdict carries the signals that justify it, surfaced in the verdict card.
+- **Admin blocklist upload**: a reviewer adds scam numbers to the durable blocklist that the app syncs for native call screening.
+
+Not built (out of scope, by design): the WhatsApp/Telegram ScamShield Bot, iMessage/RCS, HTX and law-enforcement data sharing, bank/telco data-sharing and Singpass Anti-Fraud integrations, the Google LLM-collaboration program, and real account auth (the admin uses a shared demo token; app checks are anonymous with an opaque device token). These need real partner/government systems, so they are deliberately not faked.
 
 ## Disclaimer
 
