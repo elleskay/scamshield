@@ -3,10 +3,8 @@
 // component -> ui. e2e is Maestro (see .maestro/ and docs/TESTING.md), the API
 // keeps Vitest. Reset coverage once before the run via the test:spec script.
 module.exports = {
-  // Cap workers and recycle them: the CI runner is memory-constrained and
-  // jest-expo workers are heavy; unbounded workers were force-exited mid-test.
+  // Cap workers: the CI runner is 2-core and jest-expo workers are heavy.
   maxWorkers: 2,
-  workerIdleMemoryLimit: "512MB",
   projects: [
     {
       preset: "jest-expo",
