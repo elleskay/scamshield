@@ -68,9 +68,12 @@ jobs:
         run: |
           MANIFEST=apps/app/android/app/src/main/AndroidManifest.xml
           sed -i 's/<application /<application android:usesCleartextTraffic="true" /' "$MANIFEST"
-          grep -q 'usesCleartextTraffic="true"' "$MANIFEST" \
-            && echo "cleartext: enabled" \
-            || { echo "failed to set cleartext in manifest"; exit 1; }
+          if grep -q 'usesCleartextTraffic="true"' "$MANIFEST"; then
+            echo "cleartext: enabled"
+          else
+            echo "failed to set cleartext in manifest"
+            exit 1
+          fi
       - name: Build release APK (JS bundled)
         # A debug APK expects a Metro dev server for the JS bundle; in CI there is
         # none, so the app would launch to an error screen and Maestro finds no UI.

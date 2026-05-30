@@ -57,9 +57,11 @@ export default function CheckScreen() {
   const flagged = result !== null && result.verdict !== "clean";
   const sev = result ? severity[result.verdict] : null;
   const canCheck = !!text && !busy;
+  const showIntro = !result && !reportId;
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg }}>
+    <View style={[styles.page, { backgroundColor: c.border }]}>
+      <View style={[styles.device, { backgroundColor: c.bg }]}>
       <LinearGradient
         colors={[brand.indigo, brand.violet]}
         start={{ x: 0, y: 0 }}
@@ -115,6 +117,22 @@ export default function CheckScreen() {
             onPress={() => void onCheck()}
           />
         </View>
+
+        {showIntro && (
+          <View style={styles.steps}>
+            {STEPS.map((s) => (
+              <View key={s.title} style={styles.step}>
+                <View style={[styles.stepIcon, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+                  <MaterialCommunityIcons name={s.icon as never} size={20} color={brand.indigo} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.stepTitle, { color: c.text }]}>{s.title}</Text>
+                  <Text style={[styles.stepBody, { color: c.textMuted }]}>{s.body}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
         {result && sev && (
           <Animated.View
@@ -193,6 +211,7 @@ export default function CheckScreen() {
           Unofficial demo. Not affiliated with the official ScamShield.
         </Text>
       </ScrollView>
+      </View>
     </View>
   );
 }
@@ -242,8 +261,28 @@ function CheckButton({
   );
 }
 
+const STEPS = [
+  {
+    icon: "clipboard-text-outline",
+    title: "Paste a message",
+    body: "An SMS, email, or link you are not sure about.",
+  },
+  {
+    icon: "shield-search",
+    title: "Get an instant verdict",
+    body: "We score it as scam, suspicious, or clean.",
+  },
+  {
+    icon: "account-group-outline",
+    title: "Report to protect others",
+    body: "Flagged scams help warn the community.",
+  },
+];
+
 const styles = StyleSheet.create({
-  hero: { paddingHorizontal: 20, paddingBottom: 22 },
+  page: { flex: 1, alignItems: "center" },
+  device: { flex: 1, width: "100%", maxWidth: 480, overflow: "hidden" },
+  hero: { paddingHorizontal: 20, paddingBottom: 24 },
   heroRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingTop: 8 },
   logo: {
     width: 46,
@@ -256,7 +295,7 @@ const styles = StyleSheet.create({
   brandName: { color: "#fff", fontSize: 22, fontWeight: "800", letterSpacing: 0.2 },
   tagline: { color: "rgba(255,255,255,0.85)", fontSize: 13, marginTop: 1 },
 
-  body: { padding: 16, gap: 16, paddingBottom: 40 },
+  body: { paddingHorizontal: 16, paddingTop: 18, paddingBottom: 40, gap: 16 },
   card: {
     borderRadius: 20,
     borderWidth: 1,
@@ -327,6 +366,19 @@ const styles = StyleSheet.create({
   successTitle: { fontSize: 16, fontWeight: "700", color: "#065F46" },
   successRef: { fontSize: 13, fontWeight: "600", color: "#047857", fontFamily: "monospace" },
   successNote: { fontSize: 13 },
+
+  steps: { gap: 18, paddingHorizontal: 4, paddingTop: 2 },
+  step: { flexDirection: "row", alignItems: "center", gap: 14 },
+  stepIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepTitle: { fontSize: 15, fontWeight: "700" },
+  stepBody: { fontSize: 13, lineHeight: 18, marginTop: 1 },
 
   footer: { textAlign: "center", fontSize: 12, marginTop: 8 },
 });
