@@ -21,7 +21,9 @@ export function VerdictCard({ verdict, score, reason, verified }: VerdictCardPro
   const reveal = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     reveal.setValue(0);
-    Animated.spring(reveal, { toValue: 1, useNativeDriver: true, friction: 7 }).start();
+    const anim = Animated.spring(reveal, { toValue: 1, useNativeDriver: true, friction: 7 });
+    anim.start();
+    return () => anim.stop();
   }, [verdict, reason, reveal]);
 
   const animated = {

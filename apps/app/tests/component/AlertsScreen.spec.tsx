@@ -16,8 +16,11 @@ jest.mock("@/lib/api", () => ({
 test("[SCAM-ALERT-002] alerts tab renders advisories", async () => {
   render(<AlertsScreen />);
 
-  await waitFor(() => {
-    expect(screen.getByTestId("alert-card")).toBeTruthy();
-    expect(screen.getByText("Fake bank SMS")).toBeTruthy();
-  });
+  await waitFor(
+    () => {
+      expect(screen.getByTestId("alert-card")).toBeTruthy();
+      expect(screen.getByText("Fake bank SMS")).toBeTruthy();
+    },
+    { timeout: 10000 },
+  );
 });

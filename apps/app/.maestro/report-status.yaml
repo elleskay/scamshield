@@ -6,10 +6,15 @@ name: "[SCAM-REPORT-004] a submitted report appears under My Reports"
 - tapOn:
     id: "message-input"
 - inputText: "You won a prize, claim now http://evil.example"
+- hideKeyboard
 - tapOn:
     id: "check-button"
 - assertVisible:
     id: "verdict"
+- scrollUntilVisible:
+    element:
+      id: "report-button"
+    direction: DOWN
 - tapOn:
     id: "report-button"
 - assertVisible:
