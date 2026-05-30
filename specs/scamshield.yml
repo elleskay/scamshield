@@ -147,3 +147,26 @@ requirements:
     when: they enter a known scam number and tap Check
     then: a scam verdict is shown
     tags: [call, journey]
+
+  # Phase 2: My Reports. A device can see its own reports and their verification
+  # status (the "push when authorities mark it scam" loop, made visible).
+  - id: SCAM-REPORT-003
+    title: A device can list its own reports with status
+    category: functional
+    verify: integration
+    severity: high
+    given: the running API and a device that submitted a report
+    when: the device GETs /reports with its device token
+    then: it receives its reports with a status reflecting the verdict, and cannot see other devices' reports
+    tags: [report]
+
+  - id: SCAM-REPORT-004
+    title: A submitted report appears under My Reports with its status
+    category: functional
+    verify: e2e
+    platforms: [ios, android]
+    severity: high
+    given: a user who has just reported a flagged message
+    when: they open the Reports tab
+    then: the report is listed with a status badge
+    tags: [report, journey]

@@ -20,6 +20,16 @@ export interface ReportReceipt {
   status: string;
 }
 
+export type ReportStatus = "queued" | "scam" | "suspicious" | "clean";
+
+export interface ReportSummary {
+  reportId: string;
+  status: ReportStatus;
+  channel?: string;
+  snippet: string;
+  createdAt: string;
+}
+
 /** Classify a message. Falls back to the offline heuristic if the API is unreachable. */
 export async function checkMessage(text: string): Promise<CheckResult> {
   try {
@@ -66,4 +76,15 @@ export async function submitReport(text: string, deviceToken?: string): Promise<
   });
   if (!res.ok) throw new Error(`report failed: ${res.status}`);
   return (await res.json()) as ReportReceipt;
+}
+
+/** List the calling device's own reports and their status. Empty on failure. */
+export async function listReports(deviceToken: string): Promise<ReportSummary[]> {
+  try {
+    const res = await fetch(`${API_URL}/reports?deviceToken=${encodeURIComponent(deviceToken)}`);
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    return (await res.json()) as ReportSummary[];
+  } catch {
+    return [];
+  }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Post, Query } from "@nestjs/common";
 import { ReportsService } from "./reports.service";
 import { CheckMessageDto } from "./dto/check-message.dto";
 import { CreateReportDto } from "./dto/create-report.dto";
@@ -19,5 +19,12 @@ export class ReportsController {
   @Post()
   async submit(@Body() dto: CreateReportDto) {
     return this.reports.submit(dto);
+  }
+
+  // A device's own reports and their verification status. Scoped to the caller's
+  // opaque device token; returns an empty list without one.
+  @Get()
+  list(@Query("deviceToken") deviceToken?: string) {
+    return this.reports.list(deviceToken);
   }
 }

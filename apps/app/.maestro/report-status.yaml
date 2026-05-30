@@ -1,0 +1,19 @@
+appId: com.elleskay.scamshield
+name: "[SCAM-REPORT-004] a submitted report appears under My Reports"
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "message-input"
+- inputText: "You won a prize, claim now http://evil.example"
+- tapOn:
+    id: "check-button"
+- assertVisible:
+    id: "verdict"
+- tapOn:
+    id: "report-button"
+- assertVisible:
+    id: "report-confirmation"
+- tapOn: "Reports"
+- assertVisible:
+    id: "report-row"

@@ -40,4 +40,34 @@ describe("reports HTTP API", () => {
       .send({ text: "hi", admin: true });
     expect(unknownField.status).toBe(400);
   });
+
+  test("[SCAM-REPORT-003] a device can list its own reports with status", async () => {
+    const deviceToken = `dev-${Date.now()}`;
+
+    const submit = await request(app.getHttpServer())
+      .post("/reports")
+      .send({
+        text: "You won a prize, claim now http://evil.example",
+        channel: "message",
+        deviceToken,
+      });
+    expect(submit.status).toBe(201);
+    const reportId = submit.body.reportId as string;
+
+    // No queue configured in tests, so the report is processed inline and the
+    // status reflects the verdict.
+    const list = await request(app.getHttpServer()).get("/reports").query({ deviceToken });
+    expect(list.status).toBe(200);
+    expect(Array.isArray(list.body)).toBe(true);
+    const mine = list.body.find((r: { reportId: string }) => r.reportId === reportId);
+    expect(mine).toBeTruthy();
+    expect(mine.status).toBe("scam");
+    expect(typeof mine.snippet).toBe("string");
+
+    // Another device does not see it.
+    const other = await request(app.getHttpServer())
+      .get("/reports")
+      .query({ deviceToken: "someone-else" });
+    expect(other.body.find((r: { reportId: string }) => r.reportId === reportId)).toBeFalsy();
+  });
 });
