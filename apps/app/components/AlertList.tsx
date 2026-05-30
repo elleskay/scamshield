@@ -19,8 +19,8 @@ export function AlertList({ alerts }: { alerts: Alert[] }) {
         >
           <View style={styles.cardHead}>
             <View style={[styles.chip, { backgroundColor: c.surfaceAlt }]}>
-              <MaterialCommunityIcons name="alert-decagram-outline" size={14} color={brand.indigo} />
-              <Text style={[styles.chipText, { color: brand.indigo }]}>{a.category}</Text>
+              <MaterialCommunityIcons name="alert-decagram-outline" size={14} color={brand.primary} />
+              <Text style={[styles.chipText, { color: brand.primary }]}>{a.category}</Text>
             </View>
             <Text style={[styles.date, { color: c.textMuted }]}>{formatDate(a.date)}</Text>
           </View>

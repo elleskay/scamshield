@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 
 export interface Classification {
-  verdict: "scam" | "suspicious" | "clean";
+  verdict: "scam" | "suspicious" | "clean" | "spam";
   score: number;
   reason: string;
   source: "llm" | "heuristic";
@@ -60,8 +60,19 @@ export class ClassifierService {
     const t = text.toLowerCase();
     const hasLink = /https?:\/\/|\bwww\./.test(t);
     const lure = /(verify|urgent|prize|gift|otp|password|bank|click)/.test(t);
+    const promo =
+      /(unsubscribe|\bsale\b|discount|%\s?off|\bpromo|coupon|newsletter|limited time|offer ends|deal of)/.test(
+        t,
+      );
     if (hasLink && lure)
       return { verdict: "scam", score: 0.9, reason: "Link plus urgency lure.", source: "heuristic" };
+    if (promo)
+      return {
+        verdict: "spam",
+        score: 0.4,
+        reason: "Unsolicited promotional content, not a scam.",
+        source: "heuristic",
+      };
     if (hasLink || lure)
       return {
         verdict: "suspicious",

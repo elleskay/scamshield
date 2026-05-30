@@ -92,6 +92,18 @@ export function VerdictCard({ verdict, score, reason, verified, reportedCount }:
           </Text>
         </View>
       )}
+
+      {verdict === "spam" && (
+        <Text style={[styles.eduNote, { color: c.textMuted }]}>
+          Spam is unsolicited promotional content, not necessarily a scam. A scam tries to steal
+          your money or personal details.
+        </Text>
+      )}
+
+      <View style={styles.aiRow}>
+        <MaterialCommunityIcons name="robot-happy-outline" size={13} color={c.textMuted} />
+        <Text style={[styles.ai, { color: c.textMuted }]}>Assessed by AI</Text>
+      </View>
     </Animated.View>
   );
 }
@@ -111,11 +123,14 @@ const styles = StyleSheet.create({
   leftAccent: { borderLeftWidth: 5 },
   head: { flexDirection: "row", alignItems: "center", gap: 14 },
   badge: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  label: { fontSize: 20, fontWeight: "800", letterSpacing: 0.3 },
+  label: { fontSize: 17, fontWeight: "800", letterSpacing: 0.2 },
   reason: { fontSize: 14, lineHeight: 20, marginTop: 2 },
   meterLabel: { fontSize: 12, fontWeight: "600", marginTop: 4 },
   meterTrack: { height: 8, borderRadius: 99, overflow: "hidden" },
   meterFill: { height: 8, borderRadius: 99 },
   reportedRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
   reported: { fontSize: 13 },
+  eduNote: { fontSize: 12, lineHeight: 17, fontStyle: "italic", marginTop: 2 },
+  aiRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 },
+  ai: { fontSize: 11, letterSpacing: 0.3 },
 });

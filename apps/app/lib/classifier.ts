@@ -1,4 +1,4 @@
-export type Verdict = "scam" | "suspicious" | "clean";
+export type Verdict = "scam" | "suspicious" | "clean" | "spam";
 
 export interface CheckResult {
   verdict: Verdict;
@@ -17,8 +17,17 @@ export function localHeuristic(text: string): CheckResult {
   const t = text.toLowerCase();
   const hasLink = /https?:\/\/|\bwww\./.test(t);
   const lure = /(verify|urgent|prize|gift|otp|password|bank|click|claim|won)/.test(t);
+  // Spam = unsolicited promotional content (not necessarily a scam).
+  const promo = /(unsubscribe|\bsale\b|discount|%\s?off|\bpromo|coupon|newsletter|limited time|offer ends|deal of)/.test(t);
   if (hasLink && lure) {
     return { verdict: "scam", score: 0.9, reason: "Contains a link and urgency/lure language." };
+  }
+  if (promo) {
+    return {
+      verdict: "spam",
+      score: 0.4,
+      reason: "Looks like unsolicited promotional content, not a scam.",
+    };
   }
   if (hasLink || lure) {
     return { verdict: "suspicious", score: 0.5, reason: "Contains a link or pressure language." };

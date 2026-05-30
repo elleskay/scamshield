@@ -11,6 +11,7 @@ const STATUS_META: Record<ReportStatus, { label: string; color: string; icon: st
   pending: { label: "Under review", color: "#64748B", icon: "clock-outline" },
   scam: { label: "Scam", color: "#DC2626", icon: "alert-octagon" },
   suspicious: { label: "Suspicious", color: "#D97706", icon: "alert" },
+  spam: { label: "Spam", color: "#475569", icon: "bullhorn-outline" },
   clean: { label: "Clean", color: "#059669", icon: "shield-check" },
 };
 

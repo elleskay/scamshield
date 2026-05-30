@@ -5,6 +5,7 @@ const STATUS: Record<ReportStatus, { label: string; color: string; bg: string }>
   pending: { label: "Pending", color: "#475569", bg: "#F1F5F9" },
   scam: { label: "Scam", color: "#B91C1C", bg: "#FEF2F2" },
   suspicious: { label: "Suspicious", color: "#B45309", bg: "#FFFBEB" },
+  spam: { label: "Spam", color: "#475569", bg: "#F1F5F9" },
   clean: { label: "Clean", color: "#047857", bg: "#ECFDF5" },
 };
 
@@ -76,7 +77,7 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut: () => void 
     void load();
   }, [load]);
 
-  async function review(id: string, verdict: "scam" | "suspicious" | "clean") {
+  async function review(id: string, verdict: "scam" | "suspicious" | "clean" | "spam") {
     const updated = await verifyReport(token, id, verdict);
     setReports((prev) => prev?.map((r) => (r.reportId === id ? updated : r)) ?? null);
   }
@@ -128,6 +129,9 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut: () => void 
                       </button>
                       <button style={S.susBtn} onClick={() => void review(r.reportId, "suspicious")}>
                         Suspicious
+                      </button>
+                      <button style={S.spamBtn} onClick={() => void review(r.reportId, "spam")}>
+                        Spam
                       </button>
                       <button style={S.cleanBtn} onClick={() => void review(r.reportId, "clean")}>
                         Clean
@@ -189,5 +193,6 @@ const S: Record<string, React.CSSProperties> = {
   actions: { display: "flex", gap: 6 },
   scamBtn: { padding: "6px 10px", borderRadius: 8, border: "none", background: "#DC2626", color: "#fff", cursor: "pointer" },
   susBtn: { padding: "6px 10px", borderRadius: 8, border: "none", background: "#D97706", color: "#fff", cursor: "pointer" },
+  spamBtn: { padding: "6px 10px", borderRadius: 8, border: "none", background: "#64748B", color: "#fff", cursor: "pointer" },
   cleanBtn: { padding: "6px 10px", borderRadius: 8, border: "none", background: "#059669", color: "#fff", cursor: "pointer" },
 };

@@ -26,7 +26,7 @@ import {
 import { StatsStrip } from "@/components/StatsStrip";
 import { WarningCard } from "@/components/WarningCard";
 import { getDeviceToken } from "@/lib/device";
-import { brand, palette } from "@/lib/theme";
+import { brand, palette, severity } from "@/lib/theme";
 
 type Mode = "message" | "number" | "email";
 type ActiveResult =
@@ -98,12 +98,20 @@ export default function CheckScreen() {
     (result?.kind === "message" || result?.kind === "email") && result.data.verdict !== "clean";
   const flaggedLink =
     (result?.kind === "message" || result?.kind === "email") &&
-    result.data.verdict !== "clean" &&
+    (result.data.verdict === "scam" || result.data.verdict === "suspicious") &&
     /https?:\/\/|\bwww\./.test(mode === "email" ? email : text);
   const verified =
     result?.kind === "number" && result.data.isVerifiedCaller
       ? { label: result.data.label }
       : null;
+  const reportVerdict = result && result.kind !== "number" ? result.data.verdict : null;
+  const reportLabel =
+    reportVerdict === "scam"
+      ? "Report this scam"
+      : reportVerdict === "spam"
+        ? "Report this spam"
+        : "Report this message";
+  const reportColor = reportVerdict ? severity[reportVerdict].color : "#DC2626";
 
   return (
     <Screen>
@@ -203,7 +211,7 @@ export default function CheckScreen() {
           {STEPS.map((s) => (
             <View key={s.title} style={styles.step}>
               <View style={[styles.stepIcon, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
-                <MaterialCommunityIcons name={s.icon as never} size={20} color={brand.indigo} />
+                <MaterialCommunityIcons name={s.icon as never} size={20} color={brand.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.stepTitle, { color: c.text }]}>{s.title}</Text>
@@ -234,11 +242,11 @@ export default function CheckScreen() {
           onPress={() => void onReport()}
           style={({ pressed }) => [
             styles.reportBtn,
-            { backgroundColor: "#DC2626", opacity: busy ? 0.6 : pressed ? 0.9 : 1 },
+            { backgroundColor: reportColor, opacity: busy ? 0.6 : pressed ? 0.9 : 1 },
           ]}
         >
           <MaterialCommunityIcons name="flag-outline" size={20} color="#fff" />
-          <Text style={styles.reportBtnText}>Report this scam</Text>
+          <Text style={styles.reportBtnText}>{reportLabel}</Text>
         </Pressable>
       )}
 
@@ -250,7 +258,7 @@ export default function CheckScreen() {
           </View>
           <Text style={styles.successRef}>Reference {reportId.slice(0, 8)}</Text>
           <Text style={[styles.successNote, { color: c.textMuted }]}>
-            You helped protect others from this scam. Track it under Reports.
+            You helped protect others. Track it under Reports.
           </Text>
         </View>
       )}
@@ -280,7 +288,7 @@ function SegmentButton({
       testID={testID}
       accessibilityRole="button"
       onPress={onPress}
-      style={[styles.segmentBtn, active && { backgroundColor: brand.indigo }]}
+      style={[styles.segmentBtn, active && { backgroundColor: brand.primary }]}
     >
       <MaterialCommunityIcons name={icon as never} size={16} color={active ? "#fff" : "#64748B"} />
       <Text style={[styles.segmentText, { color: active ? "#fff" : "#64748B" }]}>{label}</Text>
@@ -316,7 +324,7 @@ function CheckButton({
     >
       <Animated.View style={{ transform: [{ scale }] }}>
         <LinearGradient
-          colors={disabled ? ["#CBD5E1", "#94A3B8"] : [brand.indigo, brand.violet]}
+          colors={disabled ? ["#CBD5E1", "#94A3B8"] : [brand.accent, brand.primary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.cta}

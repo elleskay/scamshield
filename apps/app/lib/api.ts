@@ -21,12 +21,12 @@ export interface ReportReceipt {
   status: string;
 }
 
-export type ReportStatus = "pending" | "scam" | "suspicious" | "clean";
+export type ReportStatus = "pending" | "scam" | "suspicious" | "clean" | "spam";
 
 export interface ReportSummary {
   reportId: string;
   status: ReportStatus;
-  suggestedVerdict: "scam" | "suspicious" | "clean" | null;
+  suggestedVerdict: "scam" | "suspicious" | "clean" | "spam" | null;
   channel?: string;
   snippet: string;
   createdAt: string;

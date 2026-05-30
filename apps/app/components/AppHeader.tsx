@@ -1,7 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { brand } from "@/lib/theme";
 
 /** The branded gradient hero shown at the top of every tab. Brand-only; each
@@ -9,7 +8,7 @@ import { brand } from "@/lib/theme";
 export function AppHeader() {
   return (
     <LinearGradient
-      colors={[brand.indigo, brand.violet]}
+      colors={[brand.accent, brand.primary]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.hero}
@@ -17,7 +16,7 @@ export function AppHeader() {
       <SafeAreaView edges={["top"]}>
         <View style={styles.heroRow}>
           <View style={styles.logo}>
-            <MaterialCommunityIcons name="shield-check" size={26} color="#fff" />
+            <Text style={styles.fox}>🦊</Text>
           </View>
           <View>
             <Text style={styles.brandName}>ScamShield</Text>
@@ -40,6 +39,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  fox: { fontSize: 26 },
   brandName: { color: "#fff", fontSize: 22, fontWeight: "800", letterSpacing: 0.2 },
   tagline: { color: "rgba(255,255,255,0.85)", fontSize: 13, marginTop: 1 },
 });

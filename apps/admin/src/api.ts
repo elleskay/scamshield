@@ -1,11 +1,11 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
-export type ReportStatus = "pending" | "scam" | "suspicious" | "clean";
+export type ReportStatus = "pending" | "scam" | "suspicious" | "clean" | "spam";
 
 export interface AdminReport {
   reportId: string;
   status: ReportStatus;
-  suggestedVerdict: "scam" | "suspicious" | "clean" | null;
+  suggestedVerdict: "scam" | "suspicious" | "clean" | "spam" | null;
   channel?: string;
   snippet: string;
   createdAt: string;
@@ -22,7 +22,7 @@ export async function listReports(token: string): Promise<AdminReport[]> {
 export async function verifyReport(
   token: string,
   reportId: string,
-  verdict: "scam" | "suspicious" | "clean",
+  verdict: "scam" | "suspicious" | "clean" | "spam",
 ): Promise<AdminReport> {
   const res = await fetch(`${API_URL}/admin/reports/${reportId}`, {
     method: "PATCH",

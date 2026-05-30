@@ -309,6 +309,26 @@ requirements:
     when: a checked message is flagged and contains a link
     then: a prominent "do not tap links" warning is shown
 
+  # Phase 3b: spam outcome + conversational outcome labels + AI attribution,
+  # mirroring the real ScamShield's four message outcomes.
+  - id: SCAM-CLASSIFY-003
+    title: Unsolicited promotional content is classified as spam
+    category: data
+    verify: unit
+    severity: medium
+    given: the offline heuristic
+    when: it scores promotional content with no phishing lure
+    then: it returns verdict spam (distinct from scam)
+
+  - id: SCAM-VERDICT-001
+    title: The verdict card shows a conversational label and AI attribution
+    category: ui
+    verify: component
+    severity: low
+    given: a verdict card for a spam result
+    when: it renders
+    then: it shows a conversational outcome label, the scam-vs-spam note, and an AI attribution
+
   # Phase 3: real LLM classifier integration (key-gated, deterministic default).
   - id: SCAM-CLASSIFY-002
     title: The classifier uses the LLM when configured and falls back on error

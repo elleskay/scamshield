@@ -11,6 +11,15 @@ test("[SCAM-CHECK-002] an ordinary message is reported clean", () => {
   expect(r.verdict).toBe("clean");
 });
 
+test("[SCAM-CLASSIFY-003] unsolicited promotional content is classified as spam", () => {
+  const r = localHeuristic("HUGE SALE! 50% off everything. Limited time only. Unsubscribe here.");
+  expect(r.verdict).toBe("spam");
+
+  // A phishing message is still a scam, not spam.
+  const scam = localHeuristic("URGENT verify your bank account http://evil.example");
+  expect(scam.verdict).toBe("scam");
+});
+
 test("[SCAM-CALL-002] known scam and verified-caller numbers are classified", () => {
   const scam = localNumberHeuristic("+65 8000 1234");
   expect(scam.verdict).toBe("scam");

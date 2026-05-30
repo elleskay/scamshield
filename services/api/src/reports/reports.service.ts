@@ -17,7 +17,7 @@ export interface ReportMessage {
   deviceToken?: string;
 }
 
-export type Verdict = "scam" | "suspicious" | "clean";
+export type Verdict = "scam" | "suspicious" | "clean" | "spam";
 // "pending" = awaiting human (admin) review; the others are the reviewed verdict.
 export type ReportStatus = "pending" | Verdict;
 

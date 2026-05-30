@@ -1,12 +1,12 @@
 import type { Verdict } from "./classifier";
 
-// Design tokens. Trust-first palette: a confident indigo/violet brand with clear
-// semantic severity colors. Calm, high-contrast, accessible, not trendy-for-its-
-// own-sake (this is an anti-scam app, legibility beats novelty).
+// Design tokens. Trust-first **blue** brand (echoing Singapore's ScamShield's
+// calm, government-grade blue) with clear semantic outcome colors and friendly,
+// conversational labels. Legibility and reassurance over novelty.
 export const brand = {
-  indigo: "#4F46E5",
-  violet: "#7C3AED",
-  indigoDark: "#3730A3",
+  primary: "#1D4ED8", // royal blue
+  primaryDeep: "#1E3A8A",
+  accent: "#3B82F6",
 };
 
 export const severity: Record<
@@ -14,21 +14,28 @@ export const severity: Record<
   { label: string; color: string; bg: string; icon: string; gradient: [string, string] }
 > = {
   scam: {
-    label: "Scam",
+    label: "Beware, this looks like a scam",
     color: "#DC2626",
     bg: "#FEF2F2",
     icon: "alert-octagon",
     gradient: ["#EF4444", "#DC2626"],
   },
   suspicious: {
-    label: "Suspicious",
+    label: "Be careful, we're not sure about this",
     color: "#D97706",
     bg: "#FFFBEB",
     icon: "alert",
     gradient: ["#F59E0B", "#D97706"],
   },
+  spam: {
+    label: "This looks like spam",
+    color: "#475569",
+    bg: "#F1F5F9",
+    icon: "bullhorn-outline",
+    gradient: ["#64748B", "#475569"],
+  },
   clean: {
-    label: "Looks clean",
+    label: "This looks safe",
     color: "#059669",
     bg: "#ECFDF5",
     icon: "shield-check",
