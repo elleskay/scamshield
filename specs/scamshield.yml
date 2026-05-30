@@ -268,3 +268,33 @@ requirements:
     given: the offline email heuristic
     when: it scores an email whose sender uses a lookalike domain
     then: it returns verdict scam
+
+  # Phase 3: awareness stats + similar-report clustering.
+  - id: SCAM-STATS-001
+    title: The stats endpoint returns usage counters
+    category: functional
+    verify: integration
+    severity: low
+    given: the running API
+    when: a client GETs /stats
+    then: it returns numeric checks, reports, and confirmedScams counters
+    tags: [stats]
+
+  - id: SCAM-CLUSTER-001
+    title: Similar reports cluster and surface a reported count
+    category: functional
+    verify: integration
+    severity: medium
+    given: two reports of content sharing a scam link domain
+    when: a client checks content with that domain
+    then: the check response includes a reportedCount of at least 2
+    tags: [stats]
+
+  - id: SCAM-STATS-002
+    title: The stats strip renders the usage counters
+    category: ui
+    verify: component
+    severity: low
+    given: the stats strip with counter values
+    when: it renders
+    then: it shows the formatted counts

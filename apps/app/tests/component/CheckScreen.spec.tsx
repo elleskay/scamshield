@@ -5,6 +5,7 @@ jest.mock("@/lib/api", () => ({
   checkMessage: jest.fn(),
   checkEmail: jest.fn(),
   submitReport: jest.fn(),
+  getStats: jest.fn(async () => ({ checks: 0, reports: 0, confirmedScams: 0 })),
   checkNumber: jest.fn(async () => ({
     verdict: "clean",
     score: 0.02,

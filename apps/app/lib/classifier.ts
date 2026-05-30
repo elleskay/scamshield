@@ -4,6 +4,8 @@ export interface CheckResult {
   verdict: Verdict;
   score: number;
   reason: string;
+  /** How many similar reports the server has seen (set by the API, not offline). */
+  reportedCount?: number;
 }
 
 /**

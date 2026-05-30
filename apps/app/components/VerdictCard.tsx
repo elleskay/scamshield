@@ -10,11 +10,13 @@ export interface VerdictCardProps {
   reason: string;
   /** When set, render the trusted "verified caller" treatment instead. */
   verified?: { label?: string } | null;
+  /** How many similar reports exist; shows a "reported N times" line when > 1. */
+  reportedCount?: number;
 }
 
 /** Shared result card for both message and number checks. Animates in on mount.
  *  Always carries testID="verdict"; verified callers add testID="verified-badge". */
-export function VerdictCard({ verdict, score, reason, verified }: VerdictCardProps) {
+export function VerdictCard({ verdict, score, reason, verified, reportedCount }: VerdictCardProps) {
   const dark = useColorScheme() === "dark";
   const c = palette(dark);
 
@@ -81,6 +83,15 @@ export function VerdictCard({ verdict, score, reason, verified }: VerdictCardPro
       <View style={[styles.meterTrack, { backgroundColor: c.surfaceAlt }]}>
         <View style={[styles.meterFill, { width: `${pct}%`, backgroundColor: sev.color }]} />
       </View>
+
+      {reportedCount != null && reportedCount > 1 && (
+        <View style={styles.reportedRow}>
+          <MaterialCommunityIcons name="account-group" size={14} color={c.textMuted} />
+          <Text style={[styles.reported, { color: c.textMuted }]}>
+            Reported {reportedCount} times by others
+          </Text>
+        </View>
+      )}
     </Animated.View>
   );
 }
@@ -105,4 +116,6 @@ const styles = StyleSheet.create({
   meterLabel: { fontSize: 12, fontWeight: "600", marginTop: 4 },
   meterTrack: { height: 8, borderRadius: 99, overflow: "hidden" },
   meterFill: { height: 8, borderRadius: 99 },
+  reportedRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
+  reported: { fontSize: 13 },
 });

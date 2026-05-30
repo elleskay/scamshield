@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -17,10 +17,13 @@ import {
   checkEmail,
   checkMessage,
   checkNumber,
+  getStats,
   submitReport,
   type CheckResult,
   type NumberCheckResult,
+  type Stats,
 } from "@/lib/api";
+import { StatsStrip } from "@/components/StatsStrip";
 import { getDeviceToken } from "@/lib/device";
 import { brand, palette } from "@/lib/theme";
 
@@ -41,6 +44,15 @@ export default function CheckScreen() {
   const [result, setResult] = useState<ActiveResult | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [stats, setStats] = useState<Stats | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void getStats().then((s) => active && setStats(s));
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function switchMode(next: Mode) {
     if (next === mode) return;
@@ -179,6 +191,8 @@ export default function CheckScreen() {
         />
       </View>
 
+      {showIntro && stats && <StatsStrip stats={stats} />}
+
       {showIntro && (
         <View style={styles.steps}>
           {STEPS.map((s) => (
@@ -201,6 +215,7 @@ export default function CheckScreen() {
           score={result.data.score}
           reason={result.data.reason}
           verified={verified}
+          reportedCount={result.kind === "number" ? undefined : result.data.reportedCount}
         />
       )}
 

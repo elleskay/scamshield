@@ -47,6 +47,17 @@ export interface ReportSummary {
 /** Admin view of a report (same shape today; kept distinct for future fields). */
 export type AdminReport = ReportSummary;
 
+/** Check response: the classification plus how many similar reports we have seen. */
+export interface CheckResponse extends Classification {
+  reportedCount: number;
+}
+
+export interface Stats {
+  checks: number;
+  reports: number;
+  confirmedScams: number;
+}
+
 /**
  * Check-and-report domain. `check` classifies a message synchronously for the
  * app. `submit` enqueues a report onto SQS for async processing. The heavy work
@@ -64,6 +75,13 @@ export class ReportsService {
   // status. In-memory for the MVP; back this with Postgres (the real app uses an
   // RDBMS) keyed on reportId, indexed by deviceToken, for durability and scale.
   private readonly byId = new Map<string, StoredReport>();
+  // Usage counters and a similar-report cluster index (in-memory; OpenSearch does
+  // this at scale, see OpenSearchService). Clustering groups reports by scam-link
+  // domain (else a normalized text key) so the app can say "reported N times".
+  private checksCount = 0;
+  private reportsCount = 0;
+  private confirmedScamsCount = 0;
+  private readonly clusters = new Map<string, number>();
 
   constructor(
     private readonly classifier: ClassifierService,
@@ -71,11 +89,23 @@ export class ReportsService {
     private readonly push: PushService,
   ) {}
 
-  async check(text: string): Promise<Classification> {
-    return this.classifier.classify(text);
+  async check(text: string): Promise<CheckResponse> {
+    this.checksCount += 1;
+    const classification = await this.classifier.classify(text);
+    return { ...classification, reportedCount: this.clusters.get(clusterKey(text)) ?? 0 };
+  }
+
+  /** Aggregate counters surfaced to users (the awareness/stats strip). */
+  stats(): Stats {
+    return {
+      checks: this.checksCount,
+      reports: this.reportsCount,
+      confirmedScams: this.confirmedScamsCount,
+    };
   }
 
   async submit(dto: CreateReportDto): Promise<ReportReceipt> {
+    this.reportsCount += 1;
     const reportId = randomUUID();
     this.byId.set(reportId, {
       reportId,
@@ -116,8 +146,9 @@ export class ReportsService {
     if (!stored) return null;
     stored.status = verdict;
     stored.reviewedAt = new Date().toISOString();
-    if (verdict === "scam" && stored.deviceToken) {
-      await this.push.notifyScam(stored.deviceToken, reportId);
+    if (verdict === "scam") {
+      this.confirmedScamsCount += 1;
+      if (stored.deviceToken) await this.push.notifyScam(stored.deviceToken, reportId);
     }
     this.logger.log(`report ${reportId} reviewed: ${verdict}`);
     return toSummary(stored);
@@ -141,6 +172,10 @@ export class ReportsService {
     // here. This mirrors the real flow: police verify, then the reporter is told.
     const stored = this.byId.get(message.reportId);
     if (stored) stored.suggestedVerdict = classification.verdict;
+
+    // Cluster similar reports so the app can say "reported N times".
+    const key = clusterKey(message.text);
+    this.clusters.set(key, (this.clusters.get(key) ?? 0) + 1);
 
     await this.search.index({
       id: message.reportId,
@@ -176,6 +211,18 @@ export class ReportsService {
 function snippetOf(text: string): string {
   const oneLine = text.replace(/\s+/g, " ").trim();
   return oneLine.length > 80 ? `${oneLine.slice(0, 80)}…` : oneLine;
+}
+
+/** Groups similar reports: by scam-link domain, else a normalized text key. */
+function clusterKey(text: string): string {
+  const domain = /https?:\/\/([\w.-]+)/i.exec(text)?.[1]?.toLowerCase();
+  if (domain) return `domain:${domain}`;
+  const norm = text
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return `text:${norm.slice(0, 60)}`;
 }
 
 function toSummary(r: StoredReport): ReportSummary {

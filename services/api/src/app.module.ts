@@ -4,6 +4,7 @@ import { ReportsModule } from "./reports/reports.module";
 import { NumbersModule } from "./numbers/numbers.module";
 import { AlertsModule } from "./alerts/alerts.module";
 import { AdminModule } from "./admin/admin.module";
+import { StatsModule } from "./stats/stats.module";
 import { ClassifierModule } from "./classifier/classifier.module";
 import { SearchModule } from "./search/search.module";
 
@@ -14,6 +15,7 @@ import { SearchModule } from "./search/search.module";
     NumbersModule,
     AlertsModule,
     AdminModule,
+    StatsModule,
     ClassifierModule,
     SearchModule,
   ],

@@ -99,6 +99,23 @@ export async function submitReport(
   return (await res.json()) as ReportReceipt;
 }
 
+export interface Stats {
+  checks: number;
+  reports: number;
+  confirmedScams: number;
+}
+
+/** Public awareness counters. Zeros on failure. */
+export async function getStats(): Promise<Stats> {
+  try {
+    const res = await fetch(`${API_URL}/stats`);
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    return (await res.json()) as Stats;
+  } catch {
+    return { checks: 0, reports: 0, confirmedScams: 0 };
+  }
+}
+
 /** Known-scam numbers (digit strings) for the native call-screening store. */
 export async function getBlocklist(): Promise<string[]> {
   try {
