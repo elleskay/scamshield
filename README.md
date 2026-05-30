@@ -2,10 +2,18 @@
 
 A check-and-report anti-scam app: paste a suspicious message, get a verdict, report confirmed scams. A React Native (Expo) app backed by a NestJS API on AWS serverless.
 
-**Live demo:** https://elleskay.github.io/scamshield/ (the real app, running in your browser via react-native-web, against the live API below)
-**Live API:** https://14cet1wgg0.execute-api.ap-southeast-1.amazonaws.com/health
-
 This is a personal portfolio build that mirrors the **stack and shape** of Singapore's ScamShield. It is **not affiliated with, endorsed by, or connected to** the official ScamShield, Open Government Products, GovTech, or the Singapore Police Force. "ScamShield" is used here only to describe what this replica is modeled on.
+
+## Demo
+
+The Android app running on a device, against the **live AWS API** (the verdict text and the report reference id both come from the deployed backend):
+
+| 1. Check a message | 2. Live verdict | 3. Report confirmed |
+|---|---|---|
+| ![check screen](docs/demo/01-check.png) | ![scam verdict](docs/demo/02-scam-verdict.png) | ![report confirmed](docs/demo/03-report-confirmed.png) |
+
+- **Live API:** https://14cet1wgg0.execute-api.ap-southeast-1.amazonaws.com/health
+- **Browser preview** (UI only, via react-native-web, not the native app): https://elleskay.github.io/scamshield/
 
 ## Why it exists
 
