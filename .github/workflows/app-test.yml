@@ -153,7 +153,7 @@ jobs:
           mkdir -p "$(dirname "$SPEC_COVERAGE_FILE")"
           ADMIN_TOKEN=test-admin-token node ../../services/api/dist/main.js > /tmp/api.log 2>&1 &
           API_PID=$!
-          for i in $(seq 1 30); do curl -sf http://localhost:3000/health && break; sleep 1; done
+          for _ in $(seq 1 30); do curl -sf http://localhost:3000/health && break; sleep 1; done
           npx playwright test
           echo "--- API log ---"; cat /tmp/api.log || true
           kill "$API_PID" 2>/dev/null || true

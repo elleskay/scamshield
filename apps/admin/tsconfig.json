@@ -17,5 +17,6 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "tests", "vite.config.ts", "playwright.config.ts"]
+  "comment": "tests/ are compiled and run by Playwright (which builds @platform/spec-test first); excluded here so `tsc` does not need the spec-test/playwright subpath.",
+  "include": ["src", "vite.config.ts", "playwright.config.ts"]
 }
