@@ -1,4 +1,4 @@
-import { localHeuristic, localNumberHeuristic } from "../../lib/classifier";
+import { localHeuristic, localNumberHeuristic, localEmailHeuristic } from "../../lib/classifier";
 
 test("[SCAM-CLASSIFY-001] link plus lure is classified as scam with score >= 0.8", () => {
   const r = localHeuristic("URGENT: verify your bank account now http://evil.example/login");
@@ -20,4 +20,12 @@ test("[SCAM-CALL-002] known scam and verified-caller numbers are classified", ()
   expect(gov.verdict).toBe("clean");
   expect(gov.isVerifiedCaller).toBe(true);
   expect(gov.label).toBe("CPF Board");
+});
+
+test("[SCAM-EMAIL-002] the email heuristic flags a spoofed-sender lure", () => {
+  const r = localEmailHeuristic("From: support@paypa1.com — please verify your account now.");
+  expect(r.verdict).toBe("scam");
+
+  const ok = localEmailHeuristic("From: mum@gmail.com see you for lunch tomorrow");
+  expect(ok.verdict).toBe("clean");
 });

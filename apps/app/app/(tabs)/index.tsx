@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { VerdictCard } from "@/components/VerdictCard";
 import {
+  checkEmail,
   checkMessage,
   checkNumber,
   submitReport,
@@ -23,9 +24,10 @@ import {
 import { getDeviceToken } from "@/lib/device";
 import { brand, palette } from "@/lib/theme";
 
-type Mode = "message" | "number";
+type Mode = "message" | "number" | "email";
 type ActiveResult =
   | { kind: "message"; data: CheckResult }
+  | { kind: "email"; data: CheckResult }
   | { kind: "number"; data: NumberCheckResult };
 
 export default function CheckScreen() {
@@ -35,6 +37,7 @@ export default function CheckScreen() {
   const [mode, setMode] = useState<Mode>("message");
   const [text, setText] = useState("");
   const [number, setNumber] = useState("");
+  const [email, setEmail] = useState("");
   const [result, setResult] = useState<ActiveResult | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -52,6 +55,8 @@ export default function CheckScreen() {
     try {
       if (mode === "message") {
         setResult({ kind: "message", data: await checkMessage(text) });
+      } else if (mode === "email") {
+        setResult({ kind: "email", data: await checkEmail(email) });
       } else {
         setResult({ kind: "number", data: await checkNumber(number) });
       }
@@ -64,16 +69,20 @@ export default function CheckScreen() {
     setBusy(true);
     try {
       const deviceToken = await getDeviceToken();
-      const receipt = await submitReport(text, deviceToken);
+      const content = mode === "email" ? email : text;
+      const channel = mode === "email" ? "email" : "message";
+      const receipt = await submitReport(content, deviceToken, channel);
       setReportId(receipt.reportId);
     } finally {
       setBusy(false);
     }
   }
 
-  const canCheck = (mode === "message" ? !!text : !!number) && !busy;
+  const canCheck =
+    (mode === "message" ? !!text : mode === "email" ? !!email : !!number) && !busy;
   const showIntro = !result && !reportId;
-  const reportable = result?.kind === "message" && result.data.verdict !== "clean";
+  const reportable =
+    (result?.kind === "message" || result?.kind === "email") && result.data.verdict !== "clean";
   const verified =
     result?.kind === "number" && result.data.isVerifiedCaller
       ? { label: result.data.label }
@@ -97,32 +106,16 @@ export default function CheckScreen() {
             active={mode === "number"}
             onPress={() => switchMode("number")}
           />
+          <SegmentButton
+            testID="mode-email"
+            icon="email-outline"
+            label="Email"
+            active={mode === "email"}
+            onPress={() => switchMode("email")}
+          />
         </View>
 
-        {mode === "message" ? (
-          <>
-            <Text style={[styles.cardHint, { color: c.textMuted }]}>
-              Paste a suspicious SMS, message, or link and we will assess it.
-            </Text>
-            <View style={[styles.inputWrap, { backgroundColor: c.inputBg, borderColor: c.border }]}>
-              <MaterialCommunityIcons
-                name="message-text-outline"
-                size={20}
-                color={c.textMuted}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                testID="message-input"
-                style={[styles.input, { color: c.text }]}
-                placeholder="e.g. Verify your bank account at..."
-                placeholderTextColor={c.textMuted}
-                value={text}
-                onChangeText={setText}
-                multiline
-              />
-            </View>
-          </>
-        ) : (
+        {mode === "number" ? (
           <>
             <Text style={[styles.cardHint, { color: c.textMuted }]}>
               Enter a phone number to see if it is a known scam or a verified caller.
@@ -146,11 +139,40 @@ export default function CheckScreen() {
               />
             </View>
           </>
+        ) : (
+          <>
+            <Text style={[styles.cardHint, { color: c.textMuted }]}>
+              {mode === "email"
+                ? "Paste a suspicious email (sender and body) and we will assess it."
+                : "Paste a suspicious SMS, message, or link and we will assess it."}
+            </Text>
+            <View style={[styles.inputWrap, { backgroundColor: c.inputBg, borderColor: c.border }]}>
+              <MaterialCommunityIcons
+                name={mode === "email" ? "email-outline" : "message-text-outline"}
+                size={20}
+                color={c.textMuted}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                testID={mode === "email" ? "email-input" : "message-input"}
+                style={[styles.input, { color: c.text }]}
+                placeholder={
+                  mode === "email"
+                    ? "e.g. From: support@paypa1.com — verify your account..."
+                    : "e.g. Verify your bank account at..."
+                }
+                placeholderTextColor={c.textMuted}
+                value={mode === "email" ? email : text}
+                onChangeText={mode === "email" ? setEmail : setText}
+                multiline
+              />
+            </View>
+          </>
         )}
 
         <CheckButton
           testID="check-button"
-          label={mode === "message" ? "Check message" : "Check number"}
+          label={mode === "message" ? "Check message" : mode === "email" ? "Check email" : "Check number"}
           disabled={!canCheck}
           busy={busy}
           onPress={() => void onCheck()}
@@ -294,8 +316,8 @@ function CheckButton({
 const STEPS = [
   {
     icon: "clipboard-text-outline",
-    title: "Check a message or number",
-    body: "An SMS, link, or phone number you are not sure about.",
+    title: "Check a message, number, or email",
+    body: "An SMS, link, phone number, or email you are not sure about.",
   },
   {
     icon: "shield-search",

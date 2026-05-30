@@ -1,0 +1,15 @@
+appId: com.elleskay.scamshield
+name: "[SCAM-EMAIL-001] check a suspicious email shows a verdict"
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "mode-email"
+- tapOn:
+    id: "email-input"
+- inputText: "From support@paypa1.com verify your bank account http://evil.example"
+- hideKeyboard
+- tapOn:
+    id: "check-button"
+- assertVisible:
+    id: "verdict"

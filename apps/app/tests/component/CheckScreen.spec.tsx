@@ -3,6 +3,7 @@ import CheckScreen from "@/app/(tabs)/index";
 
 jest.mock("@/lib/api", () => ({
   checkMessage: jest.fn(),
+  checkEmail: jest.fn(),
   submitReport: jest.fn(),
   checkNumber: jest.fn(async () => ({
     verdict: "clean",

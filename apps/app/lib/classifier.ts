@@ -24,6 +24,27 @@ export function localHeuristic(text: string): CheckResult {
   return { verdict: "clean", score: 0.1, reason: "No common scam markers found." };
 }
 
+/**
+ * Email-specific heuristic: the message heuristic plus a spoofed-sender signal
+ * (lookalike brand domains, or a brand name on a throwaway TLD). Phishing emails
+ * commonly impersonate a trusted sender, so this catches cases the link/lure pass
+ * alone would only mark suspicious.
+ */
+export function localEmailHeuristic(text: string): CheckResult {
+  const t = text.toLowerCase();
+  const lookalike =
+    /\b(paypa1|g00gle|micros0ft|amaz0n|app1e|netfl1x|faceb00k)\b/.test(t) ||
+    /(from|sender)\s*:?[^\n]*@[\w.-]*\.(xyz|top|click|live|info|zip|mov)\b/.test(t);
+  if (lookalike) {
+    return {
+      verdict: "scam",
+      score: 0.95,
+      reason: "Sender address looks spoofed (lookalike domain).",
+    };
+  }
+  return localHeuristic(text);
+}
+
 export interface NumberCheckResult {
   verdict: Verdict;
   score: number;

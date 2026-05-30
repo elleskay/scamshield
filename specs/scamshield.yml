@@ -247,3 +247,24 @@ requirements:
     when: the admin marks a pending report as scam
     then: the row reflects the new status
     tags: [admin, journey]
+
+  # Phase 3: email scam channel (report phishing emails).
+  - id: SCAM-EMAIL-001
+    title: User can check a suspicious email and see a verdict
+    category: functional
+    verify: e2e
+    platforms: [ios, android]
+    severity: high
+    given: the user is on the Check screen in Email mode
+    when: they paste a phishing email and tap Check
+    then: a verdict is shown
+    tags: [email, journey]
+
+  - id: SCAM-EMAIL-002
+    title: The email heuristic flags a spoofed-sender lure
+    category: data
+    verify: unit
+    severity: medium
+    given: the offline email heuristic
+    when: it scores an email whose sender uses a lookalike domain
+    then: it returns verdict scam

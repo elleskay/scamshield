@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import {
   localHeuristic,
+  localEmailHeuristic,
   localNumberHeuristic,
   type CheckResult,
   type NumberCheckResult,
@@ -46,6 +47,21 @@ export async function checkMessage(text: string): Promise<CheckResult> {
   }
 }
 
+/** Check a pasted email. Falls back to the email-specific offline heuristic. */
+export async function checkEmail(text: string): Promise<CheckResult> {
+  try {
+    const res = await fetch(`${API_URL}/reports/check`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    return (await res.json()) as CheckResult;
+  } catch {
+    return localEmailHeuristic(text);
+  }
+}
+
 /** Check a phone number ("Check Call"). Falls back to the offline heuristic. */
 export async function checkNumber(number: string): Promise<NumberCheckResult> {
   try {
@@ -68,12 +84,16 @@ export async function checkNumber(number: string): Promise<NumberCheckResult> {
   }
 }
 
-/** Submit a flagged message as a report. Returns the report id from the API. */
-export async function submitReport(text: string, deviceToken?: string): Promise<ReportReceipt> {
+/** Submit a flagged message/email as a report. Returns the report id from the API. */
+export async function submitReport(
+  text: string,
+  deviceToken?: string,
+  channel: "message" | "email" = "message",
+): Promise<ReportReceipt> {
   const res = await fetch(`${API_URL}/reports`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ text, channel: "message", deviceToken }),
+    body: JSON.stringify({ text, channel, deviceToken }),
   });
   if (!res.ok) throw new Error(`report failed: ${res.status}`);
   return (await res.json()) as ReportReceipt;
