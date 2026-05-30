@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from "@testing-library/react-native";
-import CheckScreen from "@/app/index";
+import CheckScreen from "@/app/(tabs)/index";
 
 test("[SCAM-CHECK-003] check button is disabled until a message is entered", () => {
   render(<CheckScreen />);
