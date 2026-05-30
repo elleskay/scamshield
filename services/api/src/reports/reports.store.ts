@@ -73,6 +73,10 @@ export interface ReportsStore {
   /** All reports, newest first, optionally filtered for the admin dashboard. */
   listAll(filter?: ReportFilter): Promise<AdminReport[]>;
   stats(): Promise<Stats>;
+  /** Add scam numbers to the blocklist (deduped); returns how many were new. */
+  blockNumbers(numbers: string[]): Promise<number>;
+  /** All admin-uploaded blocked numbers (digit strings). */
+  blockedNumbers(): Promise<string[]>;
 }
 
 /** Normalize an inclusive upper bound: a bare date covers the whole day. */
@@ -114,6 +118,7 @@ export class InMemoryStore implements ReportsStore {
   private checks = 0;
   private readonly processed = new Set<string>();
   private readonly byId = new Map<string, StoredReport>();
+  private readonly blocked = new Set<string>();
 
   async init(): Promise<void> {}
 
@@ -190,5 +195,20 @@ export class InMemoryStore implements ReportsStore {
     let confirmedScams = 0;
     for (const r of this.byId.values()) if (r.status === "scam") confirmedScams += 1;
     return { checks: this.checks, reports: this.byId.size, confirmedScams };
+  }
+
+  async blockNumbers(numbers: string[]): Promise<number> {
+    let added = 0;
+    for (const n of numbers) {
+      if (!this.blocked.has(n)) {
+        this.blocked.add(n);
+        added += 1;
+      }
+    }
+    return added;
+  }
+
+  async blockedNumbers(): Promise<string[]> {
+    return Array.from(this.blocked);
   }
 }

@@ -8,10 +8,10 @@ import { OpenSearchService } from "../search/opensearch.service";
 import type { PushService } from "../push/push.service";
 
 function makeService() {
-  const classifier = new ClassifierService(new NumbersService());
+  const store = new InMemoryStore();
+  const classifier = new ClassifierService(new NumbersService(store));
   const search = new OpenSearchService();
   const push = { notifyScam: vi.fn().mockResolvedValue(true) };
-  const store = new InMemoryStore();
   const service = new ReportsService(store, classifier, search, push as unknown as PushService);
   return { service, classifier, push };
 }

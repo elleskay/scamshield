@@ -7,9 +7,11 @@ import { AdminModule } from "./admin/admin.module";
 import { StatsModule } from "./stats/stats.module";
 import { ClassifierModule } from "./classifier/classifier.module";
 import { SearchModule } from "./search/search.module";
+import { StoreModule } from "./store/store.module";
 
 @Module({
   imports: [
+    StoreModule,
     HealthModule,
     ReportsModule,
     NumbersModule,

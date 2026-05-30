@@ -30,6 +30,20 @@ export async function exportReportsCsv(token: string, q?: string): Promise<strin
   return await res.text();
 }
 
+/** Upload scam numbers to the blocklist. Returns how many were newly added. */
+export async function addToBlocklist(
+  token: string,
+  numbers: string[],
+): Promise<{ added: number; total: number }> {
+  const res = await fetch(`${API_URL}/admin/blocklist`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify({ numbers }),
+  });
+  if (!res.ok) throw new Error(`blocklist upload failed: ${res.status}`);
+  return (await res.json()) as { added: number; total: number };
+}
+
 export async function verifyReport(
   token: string,
   reportId: string,

@@ -420,3 +420,42 @@ requirements:
     given: the running API with an admin token and some reports
     when: the admin GETs /admin/reports/export with optional from and to dates
     then: it responds with text/csv containing a header row and the matching reports
+
+  # Phase 6: OTP-aware classification (avoid flagging legitimate one-time passcodes).
+  - id: SCAM-OTP-001
+    title: A legitimate one-time passcode message is not flagged
+    category: data
+    verify: unit
+    severity: medium
+    given: the offline heuristic
+    when: it scores a one-time passcode (OTP) message that contains no link
+    then: it returns verdict clean, while an OTP message with a phishing link stays scam
+
+  # Phase 6: per-signal explanation of why a message was flagged.
+  - id: SCAM-WHY-001
+    title: The classifier returns the signals behind a verdict
+    category: data
+    verify: unit
+    severity: low
+    given: the offline heuristic
+    when: it flags a message with a link and pressure language
+    then: it returns a list of signals naming the link and the language
+
+  - id: SCAM-WHY-002
+    title: The verdict card explains why a message was flagged
+    category: ui
+    verify: component
+    severity: low
+    given: a verdict card with classifier signals
+    when: it renders
+    then: it shows a "why" section listing each signal
+
+  # Phase 6: admin blacklist upload (add reported scam numbers to the blocklist).
+  - id: SCAM-BLOCK-001
+    title: An admin can upload scam numbers to the blocklist
+    category: functional
+    verify: integration
+    severity: medium
+    given: the running API with an admin token
+    when: the admin POSTs scam numbers to /admin/blocklist
+    then: the numbers are added durably, appear in the blocklist, and a check of one returns scam; without a valid token it is rejected

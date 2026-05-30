@@ -10,6 +10,8 @@ export interface Classification {
   flaggedNumber?: string;
   /** The label of a trusted registered sender, when the message is from one. */
   trustedSender?: string;
+  /** Human-readable signals that justify the verdict (the "why"). */
+  signals?: string[];
 }
 
 export interface ClassifyOptions {
@@ -56,6 +58,7 @@ export class ClassifierService {
         reason: `Registered sender (${trustedSender}). Still treat unexpected requests with caution.`,
         source: "heuristic",
         trustedSender,
+        signals: [`Registered sender: ${trustedSender}`],
       };
     }
     const base = await this.classifyBase(text);
@@ -68,6 +71,7 @@ export class ClassifierService {
         reason: "Contains a phone number reported as a scam.",
         source: base.source,
         flaggedNumber,
+        signals: [...(base.signals ?? []), "Contains a reported scam number"],
       };
     }
     return base;
@@ -123,14 +127,42 @@ export class ClassifierService {
       /(unsubscribe|\bsale\b|discount|%\s?off|\bpromo|coupon|newsletter|limited time|offer ends|deal of)/.test(
         t,
       );
+    // A one-time passcode: a 4-8 digit code alongside an OTP keyword.
+    const otpLike =
+      /\b\d{4,8}\b/.test(text) &&
+      /\b(otp|one[- ]?time (?:passcode|password|pin)|verification code|security code|passcode|2fa|two[- ]factor)\b/.test(
+        t,
+      );
+
+    const signals: string[] = [];
+    if (hasLink) signals.push("Contains a link");
+    if (lure) signals.push("Urgency or sensitive-info language");
+    if (promo) signals.push("Unsolicited promotional content");
+
+    // A genuine OTP message (no link) is legitimate, not a scam.
+    if (otpLike && !hasLink)
+      return {
+        verdict: "clean",
+        score: 0.1,
+        reason: "Looks like a one-time passcode (OTP) message.",
+        source: "heuristic",
+        signals: ["One-time passcode message"],
+      };
     if (hasLink && lure)
-      return { verdict: "scam", score: 0.9, reason: "Link plus urgency lure.", source: "heuristic" };
+      return {
+        verdict: "scam",
+        score: 0.9,
+        reason: "Link plus urgency lure.",
+        source: "heuristic",
+        signals,
+      };
     if (promo)
       return {
         verdict: "spam",
         score: 0.4,
         reason: "Unsolicited promotional content, not a scam.",
         source: "heuristic",
+        signals,
       };
     if (hasLink || lure)
       return {
@@ -138,7 +170,14 @@ export class ClassifierService {
         score: 0.5,
         reason: "Contains a link or pressure language.",
         source: "heuristic",
+        signals,
       };
-    return { verdict: "clean", score: 0.1, reason: "No common scam markers.", source: "heuristic" };
+    return {
+      verdict: "clean",
+      score: 0.1,
+      reason: "No common scam markers.",
+      source: "heuristic",
+      signals,
+    };
   }
 }

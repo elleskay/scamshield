@@ -255,6 +255,7 @@ export default function CheckScreen() {
           verified={verified}
           trustedSender={msgResult?.trustedSender}
           flaggedNumber={msgResult?.flaggedNumber}
+          signals={msgResult?.signals}
           reportedCount={result.kind === "number" ? undefined : result.data.reportedCount}
         />
       )}

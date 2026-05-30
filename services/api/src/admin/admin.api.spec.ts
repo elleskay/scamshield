@@ -112,4 +112,30 @@ describe("admin verification API", () => {
       .set(auth);
     expect(future.text.trim().split("\n")).toHaveLength(1);
   });
+
+  test("[SCAM-BLOCK-001] admin can upload scam numbers to the blocklist", async () => {
+    const num = "6591234567";
+
+    // Without a valid token it is rejected and nothing changes.
+    const noauth = await request(app.getHttpServer())
+      .post("/admin/blocklist")
+      .send({ numbers: [num] });
+    expect(noauth.status).toBe(403);
+
+    // Admin uploads the number (formatted input is normalized).
+    const up = await request(app.getHttpServer())
+      .post("/admin/blocklist")
+      .set(auth)
+      .send({ numbers: ["+65 9123 4567"] });
+    expect(up.status).toBe(200);
+    expect(up.body.added).toBeGreaterThanOrEqual(1);
+
+    // It now appears in the synced blocklist...
+    const list = await request(app.getHttpServer()).get("/numbers/blocklist");
+    expect(list.body.numbers.map(String)).toContain(num);
+
+    // ...and a check of that number returns scam.
+    const check = await request(app.getHttpServer()).post("/numbers/check").send({ number: num });
+    expect(check.body.verdict).toBe("scam");
+  });
 });

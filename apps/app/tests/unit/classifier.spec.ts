@@ -59,3 +59,20 @@ test("[SCAM-NUMINMSG-001] a message containing a known scam number is flagged", 
   const ok = localHeuristic("Call me at 9123 4567 when you reach.");
   expect(ok.flaggedNumber).toBeUndefined();
 });
+
+test("[SCAM-OTP-001] a legitimate one-time passcode message is not flagged", () => {
+  // A genuine OTP with no link is clean (not suspicious), despite the word "OTP".
+  const otp = localHeuristic("Your OTP is 458213. Do not share it with anyone.");
+  expect(otp.verdict).toBe("clean");
+
+  // An OTP-themed phishing message that carries a link is still a scam.
+  const phish = localHeuristic("Your OTP is 123456, verify now at http://evil.example/login");
+  expect(phish.verdict).toBe("scam");
+});
+
+test("[SCAM-WHY-001] the classifier returns the signals behind a verdict", () => {
+  const r = localHeuristic("URGENT: verify your account at http://evil.example/login");
+  expect(r.verdict).toBe("scam");
+  expect(r.signals).toContain("Contains a link");
+  expect(r.signals).toContain("Urgency or sensitive-info language");
+});

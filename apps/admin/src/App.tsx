@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  addToBlocklist,
   exportReportsCsv,
   listReports,
   verifyReport,
@@ -100,6 +101,23 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut: () => void 
     URL.revokeObjectURL(url);
   }
 
+  const [blockInput, setBlockInput] = useState("");
+  const [blockMsg, setBlockMsg] = useState<string | null>(null);
+  async function uploadBlocklist() {
+    const numbers = blockInput
+      .split(/[\s,;]+/)
+      .map((n) => n.trim())
+      .filter(Boolean);
+    if (numbers.length === 0) return;
+    try {
+      const { added, total } = await addToBlocklist(token, numbers);
+      setBlockMsg(`Added ${added} number(s). Blocklist now has ${total}.`);
+      setBlockInput("");
+    } catch {
+      setBlockMsg("Upload failed. Check the token.");
+    }
+  }
+
   return (
     <div style={S.page}>
       <div style={S.shell}>
@@ -149,6 +167,28 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut: () => void 
           <button data-testid="export-csv" style={S.primaryBtn} onClick={() => void exportCsv()}>
             Export CSV
           </button>
+        </div>
+
+        <div style={S.blockPanel}>
+          <span style={S.muted}>Add scam numbers to the blocklist (space or comma separated):</span>
+          <div style={S.blockRow}>
+            <input
+              data-testid="blocklist-input"
+              style={S.search}
+              placeholder="e.g. +65 9123 4567, 65900012345"
+              value={blockInput}
+              onChange={(e) => setBlockInput(e.target.value)}
+            />
+            <button
+              data-testid="blocklist-add"
+              style={S.ghostBtn}
+              disabled={!blockInput.trim()}
+              onClick={() => void uploadBlocklist()}
+            >
+              Add to blocklist
+            </button>
+          </div>
+          {blockMsg && <span style={S.muted}>{blockMsg}</span>}
         </div>
 
         {reports && reports.length > 0 ? (
@@ -222,6 +262,17 @@ const S: Record<string, React.CSSProperties> = {
   toolbar: { display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 12, flexWrap: "wrap" },
   searchForm: { display: "flex", gap: 8, flex: 1, minWidth: 260 },
   search: { flex: 1, padding: "8px 12px", borderRadius: 10, border: "1px solid #CBD5E1", fontSize: 14 },
+  blockPanel: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    marginBottom: 16,
+    padding: 12,
+    background: "#fff",
+    border: "1px solid #E2E8F0",
+    borderRadius: 12,
+  },
+  blockRow: { display: "flex", gap: 8 },
   loginCard: {
     maxWidth: 360,
     margin: "12vh auto 0",

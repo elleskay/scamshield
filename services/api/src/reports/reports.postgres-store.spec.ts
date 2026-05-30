@@ -63,5 +63,11 @@ describe.skipIf(!url)("PostgresStore", () => {
 
     // A future lower bound excludes everything.
     expect(await store.listAll({ from: "2999-01-01" })).toHaveLength(0);
+
+    // Blocklist persistence (admin upload), deduped.
+    const blocked = `659${randomUUID().replace(/\D/g, "").slice(0, 7)}`;
+    expect(await store.blockNumbers([blocked])).toBe(1);
+    expect(await store.blockNumbers([blocked])).toBe(0);
+    expect(await store.blockedNumbers()).toContain(blocked);
   });
 });

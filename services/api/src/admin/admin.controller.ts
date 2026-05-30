@@ -7,19 +7,25 @@ import {
   NotFoundException,
   Param,
   Patch,
+  Post,
   Query,
   UseGuards,
 } from "@nestjs/common";
 import { ReportsService } from "../reports/reports.service";
+import { NumbersService } from "../numbers/numbers.service";
 import { AdminGuard } from "./admin.guard";
 import { VerifyReportDto } from "./dto/verify-report.dto";
+import { BlocklistDto } from "./dto/blocklist.dto";
 
 // Admin verification surface (the "police verify reported scams" dashboard).
 // All routes require the shared admin token (AdminGuard).
 @Controller("admin")
 @UseGuards(AdminGuard)
 export class AdminController {
-  constructor(private readonly reports: ReportsService) {}
+  constructor(
+    private readonly reports: ReportsService,
+    private readonly numbers: NumbersService,
+  ) {}
 
   // CSV export, optionally bounded by a created-at date range. Declared before the
   // list route so "reports/export" is not shadowed.
@@ -43,5 +49,12 @@ export class AdminController {
     const updated = await this.reports.verify(id, dto.verdict);
     if (!updated) throw new NotFoundException("report not found");
     return updated;
+  }
+
+  // Upload scam numbers to the blocklist (the app syncs these for call screening).
+  @HttpCode(200)
+  @Post("blocklist")
+  addBlocklist(@Body() dto: BlocklistDto) {
+    return this.numbers.addToBlocklist(dto.numbers);
   }
 }

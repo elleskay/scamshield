@@ -27,3 +27,19 @@ test("[SCAM-SENDER-002] the verdict card shows a verified-sender badge and label
   expect(screen.getByText("Verified sender")).toBeTruthy();
   expect(screen.getByText("CPF Board")).toBeTruthy();
 });
+
+test("[SCAM-WHY-002] the verdict card explains why a message was flagged", () => {
+  render(
+    <VerdictCard
+      verdict="scam"
+      score={0.9}
+      reason="Contains a link and urgency/lure language."
+      signals={["Contains a link", "Urgency or sensitive-info language"]}
+    />,
+  );
+
+  expect(screen.getByTestId("signals")).toBeTruthy();
+  expect(screen.getByText("Why this result")).toBeTruthy();
+  expect(screen.getByText("Contains a link")).toBeTruthy();
+  expect(screen.getByText("Urgency or sensitive-info language")).toBeTruthy();
+});

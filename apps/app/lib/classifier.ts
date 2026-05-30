@@ -10,6 +10,8 @@ export interface CheckResult {
   flaggedNumber?: string;
   /** The label of a trusted registered sender, when the message is from one. */
   trustedSender?: string;
+  /** Human-readable signals that justify the verdict (the "why"). */
+  signals?: string[];
 }
 
 // Trusted registered Sender IDs (channel-verified). Mirrors the server's set so
@@ -61,16 +63,7 @@ export function localHeuristic(text: string, opts?: { sender?: string }): CheckR
       score: 0.05,
       reason: `Registered sender (${trustedSender}). Still treat unexpected requests with caution.`,
       trustedSender,
-    };
-  }
-  // A known scam number in the body is a strong scam signal on its own.
-  const flaggedNumber = scamNumberInText(text);
-  if (flaggedNumber) {
-    return {
-      verdict: "scam",
-      score: 0.95,
-      reason: "Contains a phone number reported as a scam.",
-      flaggedNumber,
+      signals: [`Registered sender: ${trustedSender}`],
     };
   }
   const t = text.toLowerCase();
@@ -78,20 +71,66 @@ export function localHeuristic(text: string, opts?: { sender?: string }): CheckR
   const lure = /(verify|urgent|prize|gift|otp|password|bank|click|claim|won)/.test(t);
   // Spam = unsolicited promotional content (not necessarily a scam).
   const promo = /(unsubscribe|\bsale\b|discount|%\s?off|\bpromo|coupon|newsletter|limited time|offer ends|deal of)/.test(t);
+  // A one-time passcode: a 4-8 digit code alongside an OTP keyword.
+  const otpLike =
+    /\b\d{4,8}\b/.test(text) &&
+    /\b(otp|one[- ]?time (?:passcode|password|pin)|verification code|security code|passcode|2fa|two[- ]factor)\b/.test(
+      t,
+    );
+  const flaggedNumber = scamNumberInText(text);
+
+  // The signals that justify the verdict, surfaced to the user as "why".
+  const signals: string[] = [];
+  if (hasLink) signals.push("Contains a link");
+  if (lure) signals.push("Urgency or sensitive-info language");
+  if (flaggedNumber) signals.push("Contains a reported scam number");
+  if (promo) signals.push("Unsolicited promotional content");
+
+  // A known scam number in the body is a strong scam signal on its own.
+  if (flaggedNumber) {
+    return {
+      verdict: "scam",
+      score: 0.95,
+      reason: "Contains a phone number reported as a scam.",
+      flaggedNumber,
+      signals,
+    };
+  }
+  // A genuine OTP message (no link) is legitimate, not a scam. A phishing message
+  // that mentions OTP but carries a link falls through to the link+lure check.
+  if (otpLike && !hasLink) {
+    return {
+      verdict: "clean",
+      score: 0.1,
+      reason: "Looks like a one-time passcode (OTP) message.",
+      signals: ["One-time passcode message"],
+    };
+  }
   if (hasLink && lure) {
-    return { verdict: "scam", score: 0.9, reason: "Contains a link and urgency/lure language." };
+    return {
+      verdict: "scam",
+      score: 0.9,
+      reason: "Contains a link and urgency/lure language.",
+      signals,
+    };
   }
   if (promo) {
     return {
       verdict: "spam",
       score: 0.4,
       reason: "Looks like unsolicited promotional content, not a scam.",
+      signals,
     };
   }
   if (hasLink || lure) {
-    return { verdict: "suspicious", score: 0.5, reason: "Contains a link or pressure language." };
+    return {
+      verdict: "suspicious",
+      score: 0.5,
+      reason: "Contains a link or pressure language.",
+      signals,
+    };
   }
-  return { verdict: "clean", score: 0.1, reason: "No common scam markers found." };
+  return { verdict: "clean", score: 0.1, reason: "No common scam markers found.", signals };
 }
 
 /**
@@ -106,10 +145,13 @@ export function localEmailHeuristic(text: string): CheckResult {
     /\b(paypa1|g00gle|micros0ft|amaz0n|app1e|netfl1x|faceb00k)\b/.test(t) ||
     /(from|sender)\s*:?[^\n]*@[\w.-]*\.(xyz|top|click|live|info|zip|mov)\b/.test(t);
   if (lookalike) {
+    const signals = ["Lookalike sender domain"];
+    if (/https?:\/\/|\bwww\./.test(t)) signals.push("Contains a link");
     return {
       verdict: "scam",
       score: 0.95,
       reason: "Sender address looks spoofed (lookalike domain).",
+      signals,
     };
   }
   return localHeuristic(text);

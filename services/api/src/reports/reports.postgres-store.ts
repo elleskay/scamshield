@@ -74,10 +74,16 @@ export class PostgresStore implements ReportsStore {
   private get counters(): string {
     return `${this.schema}.counters`;
   }
+  private get blocklistTable(): string {
+    return `${this.schema}.blocklist`;
+  }
 
   constructor(private readonly connectionString: string) {}
 
   async init(): Promise<void> {
+    // Idempotent: multiple providers (ReportsService, NumbersService) await init;
+    // a second call must not open a second pool.
+    if (this.pool) return;
     const { Pool } = await import("pg");
     const needsSsl = /sslmode=require|neon\.tech/.test(this.connectionString);
     this.pool = new Pool({
@@ -106,6 +112,9 @@ export class PostgresStore implements ReportsStore {
     );
     await this.pool.query(
       `CREATE INDEX IF NOT EXISTS idx_reports_cluster ON ${this.reports}(cluster_key)`,
+    );
+    await this.pool.query(
+      `CREATE TABLE IF NOT EXISTS ${this.blocklistTable} (number TEXT PRIMARY KEY)`,
     );
     this.logger.log(`Postgres store ready (schema ${this.schema})`);
   }
@@ -204,5 +213,23 @@ export class PostgresStore implements ReportsStore {
       reports: Number(row?.reports ?? 0),
       confirmedScams: Number(row?.confirmed ?? 0),
     };
+  }
+
+  async blockNumbers(numbers: string[]): Promise<number> {
+    if (numbers.length === 0) return 0;
+    const values = numbers.map((_, i) => `($${i + 1})`).join(", ");
+    const res = await this.pool.query(
+      `INSERT INTO ${this.blocklistTable}(number) VALUES ${values}
+       ON CONFLICT (number) DO NOTHING`,
+      numbers,
+    );
+    return res.rowCount ?? 0;
+  }
+
+  async blockedNumbers(): Promise<string[]> {
+    const res = await this.pool.query<{ number: string }>(
+      `SELECT number FROM ${this.blocklistTable}`,
+    );
+    return res.rows.map((r) => r.number);
   }
 }

@@ -1,4 +1,5 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable, type OnModuleInit } from "@nestjs/common";
+import { REPORTS_STORE, type ReportsStore } from "../reports/reports.store";
 
 export interface NumberClassification {
   number: string;
@@ -19,15 +20,26 @@ const VERIFIED: Record<string, string> = {
   "18000002222": "Ministry of Manpower",
   "18000003333": "HealthHub",
 };
-const SCAM = new Set(["6580001234", "18005550199", "6590009999"]);
+const SEED_SCAM = ["6580001234", "18005550199", "6590009999"];
 
 /**
  * "Check Call": classify a phone number as a known scam, a verified government
- * caller, or unknown. Deterministic and dependency-free, like the message
- * heuristic. The native call-screening layer consumes `blocklist()`.
+ * caller, or unknown. The scam set is the built-in seed plus any numbers an admin
+ * has uploaded to the blocklist (loaded durably from the store at startup). The
+ * native call-screening layer consumes `blocklist()`.
  */
 @Injectable()
-export class NumbersService {
+export class NumbersService implements OnModuleInit {
+  // Built-in seed + admin-uploaded numbers (loaded from the store on init).
+  private readonly scam = new Set<string>(SEED_SCAM);
+
+  constructor(@Inject(REPORTS_STORE) private readonly store: ReportsStore) {}
+
+  async onModuleInit(): Promise<void> {
+    await this.store.init();
+    for (const n of await this.store.blockedNumbers()) this.scam.add(n);
+  }
+
   classify(raw: string): NumberClassification {
     const digits = raw.replace(/\D/g, "");
     const label = VERIFIED[digits];
@@ -42,7 +54,7 @@ export class NumbersService {
         label,
       };
     }
-    if (SCAM.has(digits)) {
+    if (this.scam.has(digits)) {
       return {
         number: digits,
         verdict: "scam",
@@ -74,7 +86,7 @@ export class NumbersService {
 
   /** Known-scam numbers as ascending int64s, for the device's native blocklist. */
   blocklist(): number[] {
-    return Array.from(SCAM)
+    return Array.from(this.scam)
       .map(Number)
       .sort((a, b) => a - b);
   }
@@ -87,8 +99,19 @@ export class NumbersService {
     const candidates = text.match(/\+?\d[\d\s().-]{5,}\d/g) ?? [];
     for (const candidate of candidates) {
       const digits = candidate.replace(/\D/g, "");
-      if (SCAM.has(digits)) return digits;
+      if (this.scam.has(digits)) return digits;
     }
     return null;
+  }
+
+  /**
+   * Add admin-uploaded numbers to the scam blocklist (persisted durably and merged
+   * into this instance). Returns how many were newly added and the new total.
+   */
+  async addToBlocklist(raw: string[]): Promise<{ added: number; total: number }> {
+    const digits = raw.map((n) => n.replace(/\D/g, "")).filter((n) => n.length >= 7);
+    const added = await this.store.blockNumbers(digits);
+    for (const n of digits) this.scam.add(n);
+    return { added, total: this.scam.size };
   }
 }

@@ -14,6 +14,8 @@ export interface VerdictCardProps {
   trustedSender?: string | null;
   /** A known scam phone number found inside the message; shows a warning line. */
   flaggedNumber?: string | null;
+  /** Human-readable signals behind the verdict; shown as a "why" list. */
+  signals?: string[] | null;
   /** How many similar reports exist; shows a "reported N times" line when > 1. */
   reportedCount?: number;
 }
@@ -28,6 +30,7 @@ export function VerdictCard({
   verified,
   trustedSender,
   flaggedNumber,
+  signals,
   reportedCount,
 }: VerdictCardProps) {
   const dark = useColorScheme() === "dark";
@@ -145,6 +148,18 @@ export function VerdictCard({
         </View>
       )}
 
+      {signals && signals.length > 0 && (
+        <View testID="signals" style={styles.signals}>
+          <Text style={[styles.signalsTitle, { color: c.textMuted }]}>Why this result</Text>
+          {signals.map((s) => (
+            <View key={s} style={styles.signalRow}>
+              <MaterialCommunityIcons name="circle-small" size={16} color={sev.color} />
+              <Text style={[styles.signalText, { color: c.text }]}>{s}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
       {verdict === "spam" && (
         <Text style={[styles.eduNote, { color: c.textMuted }]}>
           Spam is unsolicited promotional content, not necessarily a scam. A scam tries to steal
@@ -192,6 +207,10 @@ const styles = StyleSheet.create({
   meterFill: { height: 8, borderRadius: 99 },
   reportedRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
   reported: { fontSize: 13 },
+  signals: { gap: 2, marginTop: 2 },
+  signalsTitle: { fontSize: 12, fontWeight: "700", letterSpacing: 0.2, marginBottom: 2 },
+  signalRow: { flexDirection: "row", alignItems: "center", gap: 2 },
+  signalText: { fontSize: 13, flex: 1 },
   eduNote: { fontSize: 12, lineHeight: 17, fontStyle: "italic", marginTop: 2 },
   aiRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 },
   ai: { fontSize: 11, letterSpacing: 0.3 },

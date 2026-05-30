@@ -3,6 +3,7 @@ import { test, expect } from "@platform/spec-test/vitest";
 import { createServer, type Server } from "node:http";
 import { ClassifierService } from "./classifier.service";
 import { NumbersService } from "../numbers/numbers.service";
+import { InMemoryStore } from "../reports/reports.store";
 
 describe("ClassifierService LLM integration", () => {
   let server: Server;
@@ -35,13 +36,15 @@ describe("ClassifierService LLM integration", () => {
 
     // Configured endpoint returns a verdict -> the LLM result is used.
     handler(200, JSON.stringify({ verdict: "scam", score: 0.99, reason: "model says scam" }));
-    const fromLlm = await new ClassifierService(new NumbersService()).classify("anything");
+    const fromLlm = await new ClassifierService(new NumbersService(new InMemoryStore())).classify(
+      "anything",
+    );
     expect(fromLlm.source).toBe("llm");
     expect(fromLlm.verdict).toBe("scam");
 
     // Endpoint errors -> deterministic heuristic fallback (API stays functional).
     handler(500, "boom");
-    const fallback = await new ClassifierService(new NumbersService()).classify(
+    const fallback = await new ClassifierService(new NumbersService(new InMemoryStore())).classify(
       "URGENT verify http://evil.example",
     );
     expect(fallback.source).toBe("heuristic");
