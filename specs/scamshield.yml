@@ -190,3 +190,18 @@ requirements:
     given: the Alerts screen with advisories available
     when: it loads
     then: it renders the advisory cards
+
+  # Phase 2: native call screening. The block decision is unit-tested in JS (the
+  # native Kotlin service mirrors it). The on-device OS-level screening is a
+  # verify: native requirement, proven by a signed artifact from an emulator run
+  # (see verification/ and docs/MOBILE.md). iOS Call Directory + Message Filter
+  # extensions ship as code but need a real device + Apple signing to verify, so
+  # they are documented in docs/MOBILE.md, not gated here.
+  - id: SCAM-NATIVE-001
+    title: The block decision matches the synced scam blocklist
+    category: data
+    verify: unit
+    severity: high
+    given: the synced scam-number blocklist
+    when: a number is checked against it (ignoring formatting)
+    then: known scam numbers are blocked and others are not

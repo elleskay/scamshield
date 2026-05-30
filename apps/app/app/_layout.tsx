@@ -1,7 +1,9 @@
+import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, View, useColorScheme } from "react-native";
 import { palette } from "@/lib/theme";
+import { syncBlocklist } from "@/lib/blocklist-sync";
 
 /**
  * Root layout. Constrains the whole app to a centered phone-width column so the
@@ -11,6 +13,11 @@ import { palette } from "@/lib/theme";
 export default function RootLayout() {
   const dark = useColorScheme() === "dark";
   const c = palette(dark);
+
+  // Keep the native call-screening blocklist fresh (no-op on web).
+  useEffect(() => {
+    void syncBlocklist();
+  }, []);
   return (
     <View style={[styles.page, { backgroundColor: c.border }]}>
       <View style={[styles.device, { backgroundColor: c.bg }]}>

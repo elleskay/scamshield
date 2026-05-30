@@ -78,6 +78,18 @@ export async function submitReport(text: string, deviceToken?: string): Promise<
   return (await res.json()) as ReportReceipt;
 }
 
+/** Known-scam numbers (digit strings) for the native call-screening store. */
+export async function getBlocklist(): Promise<string[]> {
+  try {
+    const res = await fetch(`${API_URL}/numbers/blocklist`);
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    const body = (await res.json()) as { numbers: number[] };
+    return body.numbers.map(String);
+  } catch {
+    return [];
+  }
+}
+
 export interface Alert {
   id: string;
   title: string;
