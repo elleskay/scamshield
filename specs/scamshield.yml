@@ -308,3 +308,13 @@ requirements:
     given: the Check screen
     when: a checked message is flagged and contains a link
     then: a prominent "do not tap links" warning is shown
+
+  # Phase 3: real LLM classifier integration (key-gated, deterministic default).
+  - id: SCAM-CLASSIFY-002
+    title: The classifier uses the LLM when configured and falls back on error
+    category: functional
+    verify: integration
+    severity: high
+    given: a configured classifier endpoint
+    when: the service classifies a message, and separately when the endpoint errors
+    then: the model verdict is used when available, otherwise the heuristic fallback is used

@@ -42,8 +42,18 @@ export class ClassifierService {
       body: JSON.stringify({ text }),
     });
     if (!res.ok) throw new Error(`classifier ${res.status}`);
-    const data = (await res.json()) as Omit<Classification, "source">;
-    return { ...data, source: "llm" };
+    const data = (await res.json()) as Partial<Classification>;
+    // Validate the model's response; a malformed reply falls back to the heuristic.
+    if (data.verdict !== "scam" && data.verdict !== "suspicious" && data.verdict !== "clean") {
+      throw new Error("classifier returned an invalid verdict");
+    }
+    const score = Number(data.score);
+    return {
+      verdict: data.verdict,
+      score: Number.isFinite(score) ? Math.min(1, Math.max(0, score)) : 0.5,
+      reason: typeof data.reason === "string" ? data.reason : "Classified by model.",
+      source: "llm",
+    };
   }
 
   heuristic(text: string): Classification {
