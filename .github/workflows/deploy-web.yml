@@ -27,12 +27,21 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Export web build
+      - name: Export web build (mobile app)
         working-directory: apps/app
         env:
           # Live API the demo talks to (repo variable). Public URL, no secrets.
           EXPO_PUBLIC_API_URL: ${{ vars.DEMO_API_URL }}
         run: npx expo export --platform web
+      - name: Build admin dashboard
+        env:
+          # base defaults to /scamshield/admin/, matching the bundle path below.
+          VITE_API_URL: ${{ vars.DEMO_API_URL }}
+        run: npm run build -w @app/scamshield-admin
+      - name: Bundle admin under /admin
+        run: |
+          mkdir -p apps/app/dist/admin
+          cp -r apps/admin/dist/* apps/app/dist/admin/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

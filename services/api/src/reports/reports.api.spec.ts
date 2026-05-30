@@ -54,14 +54,15 @@ describe("reports HTTP API", () => {
     expect(submit.status).toBe(201);
     const reportId = submit.body.reportId as string;
 
-    // No queue configured in tests, so the report is processed inline and the
-    // status reflects the verdict.
+    // Processed inline (no queue), but a report stays "pending" until a human
+    // reviews it; the classifier's call is exposed as suggestedVerdict.
     const list = await request(app.getHttpServer()).get("/reports").query({ deviceToken });
     expect(list.status).toBe(200);
     expect(Array.isArray(list.body)).toBe(true);
     const mine = list.body.find((r: { reportId: string }) => r.reportId === reportId);
     expect(mine).toBeTruthy();
-    expect(mine.status).toBe("scam");
+    expect(mine.status).toBe("pending");
+    expect(mine.suggestedVerdict).toBe("scam");
     expect(typeof mine.snippet).toBe("string");
 
     // Another device does not see it.

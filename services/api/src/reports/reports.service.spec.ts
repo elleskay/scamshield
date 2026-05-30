@@ -25,16 +25,20 @@ describe("ReportsService.process", () => {
     expect(classify).toHaveBeenCalledTimes(1);
   });
 
-  test("[SCAM-PUSH-001] notifies the reporter when their report is marked a scam", async () => {
+  test("[SCAM-PUSH-001] notifies the reporter when an admin marks their report a scam", async () => {
     const { service, push } = makeService();
 
-    await service.process({
-      reportId: "report-2",
+    // Submit processes inline (no queue) and records a suggestion, but must not
+    // push: the reporter is only told once a human confirms it.
+    const { reportId } = await service.submit({
       text: "URGENT verify your bank http://evil.example",
       deviceToken: "ExponentPushToken[abc123]",
     });
+    expect(push.notifyScam).not.toHaveBeenCalled();
 
+    // Admin confirms the scam -> the reporter is notified.
+    await service.verify(reportId, "scam");
     expect(push.notifyScam).toHaveBeenCalledTimes(1);
-    expect(push.notifyScam).toHaveBeenCalledWith("ExponentPushToken[abc123]", "report-2");
+    expect(push.notifyScam).toHaveBeenCalledWith("ExponentPushToken[abc123]", reportId);
   });
 });

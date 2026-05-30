@@ -9,7 +9,7 @@
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "npm run typecheck -w @app/scamshield && npm run typecheck -w @service/scamshield-api",
+    "typecheck": "npm run typecheck -w @app/scamshield && npm run typecheck -w @service/scamshield-api && npm run typecheck -w @app/scamshield-admin",
     "lint": "npm run lint -w @app/scamshield && npm run lint -w @service/scamshield-api",
     "test:spec": "node scripts/run-spec.mjs",
     "format": "prettier --write .",

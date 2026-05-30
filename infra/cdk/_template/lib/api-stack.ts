@@ -20,6 +20,9 @@ export class ApiStack extends cdk.Stack {
         JWT_ISSUER: process.env.JWT_ISSUER ?? "mobile-platform",
         CLASSIFIER_API_URL: process.env.CLASSIFIER_API_URL ?? "",
         CLASSIFIER_API_KEY: process.env.CLASSIFIER_API_KEY ?? "",
+        // Admin dashboard bearer token (baked at synth, gotcha #8). Empty by
+        // default, which makes the AdminGuard deny every admin request.
+        ADMIN_TOKEN: process.env.ADMIN_TOKEN ?? "",
         DD_SERVICE: process.env.DD_SERVICE ?? "mobile-platform-api",
       },
       // OpenSearch is off by default (a domain is not free). Turn on when you

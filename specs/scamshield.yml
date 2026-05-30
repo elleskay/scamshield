@@ -89,13 +89,13 @@ requirements:
     then: it classifies and persists exactly once, keyed on the report id
 
   - id: SCAM-PUSH-001
-    title: The reporter is notified when their report is marked a scam
+    title: The reporter is notified when an admin marks their report a scam
     category: functional
     verify: integration
     severity: high
-    given: a processed report classified as scam and a registered device token
-    when: processing completes
-    then: a push notification is sent to that device token
+    given: a submitted report with a registered device token
+    when: an admin verifies it as a scam
+    then: a push notification is sent to that device token (and not before review)
 
   - id: SCAM-SEC-001
     title: No secrets are shipped in the mobile bundle
@@ -157,7 +157,7 @@ requirements:
     severity: high
     given: the running API and a device that submitted a report
     when: the device GETs /reports with its device token
-    then: it receives its reports with a status reflecting the verdict, and cannot see other devices' reports
+    then: it receives its reports as pending with the machine suggestedVerdict, and cannot see other devices' reports
     tags: [report]
 
   - id: SCAM-REPORT-004
@@ -205,3 +205,45 @@ requirements:
     given: the synced scam-number blocklist
     when: a number is checked against it (ignoring formatting)
     then: known scam numbers are blocked and others are not
+
+  # Phase 3: admin verification dashboard (the "police verify reported scams"
+  # surface). Reports stay pending until a human reviews them; the review sets the
+  # authoritative status and notifies the reporter.
+  - id: SCAM-ADMIN-001
+    title: An admin can list all reports with suggestion and status
+    category: functional
+    verify: integration
+    severity: high
+    given: the running API with an admin token and some reports
+    when: the admin GETs /admin/reports with the token
+    then: it returns every report with its suggestedVerdict and status
+    tags: [admin]
+
+  - id: SCAM-ADMIN-002
+    title: An admin verifies a report, setting its status and notifying the reporter
+    category: functional
+    verify: integration
+    severity: critical
+    given: a pending report with a device token
+    when: the admin PATCHes /admin/reports/:id with a verdict of scam
+    then: the report status becomes scam and the reporter is notified
+    tags: [admin, journey]
+
+  - id: SCAM-ADMIN-003
+    title: Admin endpoints require a valid token
+    category: security
+    verify: integration
+    severity: critical
+    given: the admin endpoints
+    when: a request arrives with no token or a wrong token
+    then: it is rejected (403) and no data is returned or changed
+
+  - id: SCAM-ADMIN-004
+    title: An admin reviews a report in the dashboard
+    category: functional
+    verify: e2e
+    severity: high
+    given: the admin dashboard signed in with the token
+    when: the admin marks a pending report as scam
+    then: the row reflects the new status
+    tags: [admin, journey]

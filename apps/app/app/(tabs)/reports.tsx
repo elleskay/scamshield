@@ -8,7 +8,7 @@ import { listReports, type ReportStatus, type ReportSummary } from "@/lib/api";
 import { palette } from "@/lib/theme";
 
 const STATUS_META: Record<ReportStatus, { label: string; color: string; icon: string }> = {
-  queued: { label: "Pending", color: "#64748B", icon: "clock-outline" },
+  pending: { label: "Under review", color: "#64748B", icon: "clock-outline" },
   scam: { label: "Scam", color: "#DC2626", icon: "alert-octagon" },
   suspicious: { label: "Suspicious", color: "#D97706", icon: "alert" },
   clean: { label: "Clean", color: "#059669", icon: "shield-check" },

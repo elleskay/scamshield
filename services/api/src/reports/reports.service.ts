@@ -17,25 +17,35 @@ export interface ReportMessage {
   deviceToken?: string;
 }
 
-export type ReportStatus = "queued" | "scam" | "suspicious" | "clean";
+export type Verdict = "scam" | "suspicious" | "clean";
+// "pending" = awaiting human (admin) review; the others are the reviewed verdict.
+export type ReportStatus = "pending" | Verdict;
 
 interface StoredReport {
   reportId: string;
   deviceToken?: string;
   channel?: string;
   snippet: string;
+  // The machine suggestion from the classifier (set by the consumer).
+  suggestedVerdict: Verdict | null;
+  // The authoritative status: "pending" until an admin reviews it.
   status: ReportStatus;
   createdAt: string;
+  reviewedAt?: string;
 }
 
 /** Public view of a report, returned to the owning device. No full content. */
 export interface ReportSummary {
   reportId: string;
   status: ReportStatus;
+  suggestedVerdict: Verdict | null;
   channel?: string;
   snippet: string;
   createdAt: string;
 }
+
+/** Admin view of a report (same shape today; kept distinct for future fields). */
+export type AdminReport = ReportSummary;
 
 /**
  * Check-and-report domain. `check` classifies a message synchronously for the
@@ -72,7 +82,8 @@ export class ReportsService {
       deviceToken: dto.deviceToken,
       channel: dto.channel,
       snippet: snippetOf(dto.text),
-      status: "queued",
+      suggestedVerdict: null,
+      status: "pending",
       createdAt: new Date().toISOString(),
     });
     await this.enqueue({ reportId, ...dto });
@@ -85,13 +96,31 @@ export class ReportsService {
     return Array.from(this.byId.values())
       .filter((r) => r.deviceToken === deviceToken)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .map(({ reportId, status, channel, snippet, createdAt }) => ({
-        reportId,
-        status,
-        channel,
-        snippet,
-        createdAt,
-      }));
+      .map(toSummary);
+  }
+
+  /** All reports, newest first. For the admin verification dashboard. */
+  listAll(): AdminReport[] {
+    return Array.from(this.byId.values())
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map(toSummary);
+  }
+
+  /**
+   * Admin verification: set the authoritative status. Marking a report a scam
+   * notifies the reporter (the "push when authorities confirm it" loop). Returns
+   * the updated report, or null if the id is unknown.
+   */
+  async verify(reportId: string, verdict: Verdict): Promise<AdminReport | null> {
+    const stored = this.byId.get(reportId);
+    if (!stored) return null;
+    stored.status = verdict;
+    stored.reviewedAt = new Date().toISOString();
+    if (verdict === "scam" && stored.deviceToken) {
+      await this.push.notifyScam(stored.deviceToken, reportId);
+    }
+    this.logger.log(`report ${reportId} reviewed: ${verdict}`);
+    return toSummary(stored);
   }
 
   /**
@@ -107,9 +136,11 @@ export class ReportsService {
 
     const classification = await this.classifier.classify(message.text);
 
-    // Record the verification outcome so the reporter can see it under Reports.
+    // Record the machine suggestion. The report stays "pending" until a human
+    // (admin) reviews it; the push to the reporter happens on that review, not
+    // here. This mirrors the real flow: police verify, then the reporter is told.
     const stored = this.byId.get(message.reportId);
-    if (stored) stored.status = classification.verdict;
+    if (stored) stored.suggestedVerdict = classification.verdict;
 
     await this.search.index({
       id: message.reportId,
@@ -118,13 +149,8 @@ export class ReportsService {
       createdAt: new Date().toISOString(),
     });
 
-    // Notify the reporter when their report is confirmed a scam.
-    if (classification.verdict === "scam" && message.deviceToken) {
-      await this.push.notifyScam(message.deviceToken, message.reportId);
-    }
-
     this.logger.log(
-      `processed report ${message.reportId}: ${classification.verdict} (${classification.source})`,
+      `processed report ${message.reportId}: suggested ${classification.verdict} (${classification.source})`,
     );
   }
 
@@ -150,4 +176,15 @@ export class ReportsService {
 function snippetOf(text: string): string {
   const oneLine = text.replace(/\s+/g, " ").trim();
   return oneLine.length > 80 ? `${oneLine.slice(0, 80)}…` : oneLine;
+}
+
+function toSummary(r: StoredReport): ReportSummary {
+  return {
+    reportId: r.reportId,
+    status: r.status,
+    suggestedVerdict: r.suggestedVerdict,
+    channel: r.channel,
+    snippet: r.snippet,
+    createdAt: r.createdAt,
+  };
 }

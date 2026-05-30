@@ -1,0 +1,34 @@
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+
+export type ReportStatus = "pending" | "scam" | "suspicious" | "clean";
+
+export interface AdminReport {
+  reportId: string;
+  status: ReportStatus;
+  suggestedVerdict: "scam" | "suspicious" | "clean" | null;
+  channel?: string;
+  snippet: string;
+  createdAt: string;
+}
+
+export async function listReports(token: string): Promise<AdminReport[]> {
+  const res = await fetch(`${API_URL}/admin/reports`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`list failed: ${res.status}`);
+  return (await res.json()) as AdminReport[];
+}
+
+export async function verifyReport(
+  token: string,
+  reportId: string,
+  verdict: "scam" | "suspicious" | "clean",
+): Promise<AdminReport> {
+  const res = await fetch(`${API_URL}/admin/reports/${reportId}`, {
+    method: "PATCH",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify({ verdict }),
+  });
+  if (!res.ok) throw new Error(`verify failed: ${res.status}`);
+  return (await res.json()) as AdminReport;
+}

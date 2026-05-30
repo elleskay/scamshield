@@ -122,10 +122,53 @@ jobs:
           path: .spec-coverage/${{ env.COV }}
           if-no-files-found: warn
 
+  admin-e2e:
+    name: Admin e2e (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run -w @platform/spec-test build
+      - name: Build API
+        run: npm run build -w @service/scamshield-api
+      - name: Build admin app (base / for the test)
+        env:
+          VITE_BASE: /
+          VITE_API_URL: http://localhost:3000
+        run: npm run build -w @app/scamshield-admin
+      - name: Install Playwright browser
+        working-directory: apps/admin
+        run: npx --yes playwright install --with-deps chromium
+      - name: Run Playwright against a local API
+        working-directory: apps/admin
+        env:
+          ADMIN_TOKEN: test-admin-token
+          VITE_API_URL: http://localhost:3000
+          SPEC_COVERAGE_FILE: ${{ github.workspace }}/.spec-coverage/${{ env.COV }}
+        run: |
+          mkdir -p "$(dirname "$SPEC_COVERAGE_FILE")"
+          ADMIN_TOKEN=test-admin-token node ../../services/api/dist/main.js > /tmp/api.log 2>&1 &
+          API_PID=$!
+          for i in $(seq 1 30); do curl -sf http://localhost:3000/health && break; sleep 1; done
+          npx playwright test
+          echo "--- API log ---"; cat /tmp/api.log || true
+          kill "$API_PID" 2>/dev/null || true
+      - name: Upload admin coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cov-admin
+          path: .spec-coverage/${{ env.COV }}
+          if-no-files-found: warn
+
   gate:
     name: Spec coverage (merged)
     runs-on: ubuntu-latest
-    needs: [js-spec, e2e-android]
+    needs: [js-spec, e2e-android, admin-e2e]
     if: always()
     steps:
       - uses: actions/checkout@v4
