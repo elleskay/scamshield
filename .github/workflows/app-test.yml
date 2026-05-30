@@ -133,7 +133,7 @@ jobs:
       - run: npm ci
       - run: npm run -w @platform/spec-test build
       - name: Download coverage artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
       - name: Merge coverage
