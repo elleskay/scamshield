@@ -8,11 +8,15 @@ This is a personal portfolio build that mirrors the **stack and shape** of Singa
 
 The four surfaces, against the **live AWS API** (verdicts, the verified-caller label, report status, and alerts all come from the deployed backend):
 
-| Check a message | Check a number | My reports + status | Scam alerts |
+| Check + stats | Scam verdict (cluster + warning) | My reports | Scam alerts |
 |---|---|---|---|
-| ![check](docs/demo/01-check.png) | ![check call](docs/demo/02-check-call.png) | ![reports](docs/demo/03-reports.png) | ![alerts](docs/demo/04-alerts.png) |
+| ![check](docs/demo/01-check.png) | ![verdict](docs/demo/02-verdict.png) | ![reports](docs/demo/03-reports.png) | ![alerts](docs/demo/04-alerts.png) |
 
-There is also an **Email** check mode, a "reported N times" cluster count, a scam-stats strip, and a do-not-tap link warning.
+The Check screen has a Message / Number / **Email** toggle and a scam-stats strip; a flagged verdict shows the "reported N times" cluster count and a do-not-tap link warning; a report stays **Under review** until an admin verifies it.
+
+**Admin verification dashboard** (the reviewer marks each report; the verdict notifies the reporter):
+
+![admin dashboard](docs/demo/05-admin.png)
 
 - **Live API:** https://14cet1wgg0.execute-api.ap-southeast-1.amazonaws.com/health
 - **App browser preview** (the same React Native components via react-native-web, against the live API): https://elleskay.github.io/scamshield/
