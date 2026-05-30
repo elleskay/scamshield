@@ -6,17 +6,21 @@ This is a personal portfolio build that mirrors the **stack and shape** of Singa
 
 ## Demo
 
-The four surfaces, against the **live AWS API** (verdicts, the verified-caller label, report status, and alerts all come from the deployed backend):
+<p align="center">
+  <img src="docs/demo/hero.png" alt="ScamShield: check, explained verdicts, verified senders, OTP-aware" width="900">
+</p>
 
-| Check + stats | Scam verdict (cluster + warning) | My reports | Scam alerts |
-|---|---|---|---|
-| ![check](docs/demo/01-check.png) | ![verdict](docs/demo/02-verdict.png) | ![reports](docs/demo/03-reports.png) | ![alerts](docs/demo/04-alerts.png) |
+Every surface runs against the **live AWS API**, with durable Postgres state. Verdicts and the **signals** behind them, the verified-**sender** and verified-**caller** labels, "reported N times" clustering, a do-not-tap link warning, report status, stats, and alerts all come from the deployed backend. A report stays **Under review** until an admin verifies it.
 
-The Check screen has a Message / Number / **Email** toggle and a scam-stats strip; a flagged verdict shows the "reported N times" cluster count and a do-not-tap link warning; a report stays **Under review** until an admin verifies it.
+<p align="center">
+  <img src="docs/demo/features.png" alt="Scam numbers in text, My reports, Scam alerts" width="900">
+</p>
 
-**Admin verification dashboard** (the reviewer marks each report; the verdict notifies the reporter):
+**Admin verification dashboard** (the reviewer verifies each report, searches and exports them, and uploads scam numbers to the blocklist; the verdict notifies the reporter):
 
-![admin dashboard](docs/demo/05-admin.png)
+<p align="center">
+  <img src="docs/demo/admin-dashboard.png" alt="Admin verification dashboard" width="840">
+</p>
 
 - **Live API:** https://14cet1wgg0.execute-api.ap-southeast-1.amazonaws.com/health
 - **App browser preview** (the same React Native components via react-native-web, against the live API): https://elleskay.github.io/scamshield/
