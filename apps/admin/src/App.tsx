@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { listReports, verifyReport, type AdminReport, type ReportStatus } from "./api";
+import {
+  exportReportsCsv,
+  listReports,
+  verifyReport,
+  type AdminReport,
+  type ReportStatus,
+} from "./api";
 
 const STATUS: Record<ReportStatus, { label: string; color: string; bg: string }> = {
   pending: { label: "Pending", color: "#475569", bg: "#F1F5F9" },
@@ -63,15 +69,17 @@ function Login({ onSignIn }: { onSignIn: (token: string) => void }) {
 function Dashboard({ token, onSignOut }: { token: string; onSignOut: () => void }) {
   const [reports, setReports] = useState<AdminReport[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     try {
-      setReports(await listReports(token));
+      setReports(await listReports(token, search));
       setError(null);
     } catch {
       setError("Could not load reports. Check the token.");
     }
-  }, [token]);
+  }, [token, search]);
 
   useEffect(() => {
     void load();
@@ -80,6 +88,16 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut: () => void 
   async function review(id: string, verdict: "scam" | "suspicious" | "clean" | "spam") {
     const updated = await verifyReport(token, id, verdict);
     setReports((prev) => prev?.map((r) => (r.reportId === id ? updated : r)) ?? null);
+  }
+
+  async function exportCsv() {
+    const csv = await exportReportsCsv(token, search);
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "scamshield-reports.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -96,6 +114,42 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut: () => void 
         </header>
 
         {error && <p style={S.error}>{error}</p>}
+
+        <div style={S.toolbar}>
+          <form
+            style={S.searchForm}
+            onSubmit={(e) => {
+              e.preventDefault();
+              setSearch(query);
+            }}
+          >
+            <input
+              data-testid="search-input"
+              style={S.search}
+              placeholder="Search content, status, channel, or device"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <button data-testid="search-btn" style={S.ghostBtn} type="submit">
+              Search
+            </button>
+            {search && (
+              <button
+                style={S.ghostBtn}
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  setSearch("");
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </form>
+          <button data-testid="export-csv" style={S.primaryBtn} onClick={() => void exportCsv()}>
+            Export CSV
+          </button>
+        </div>
 
         {reports && reports.length > 0 ? (
           <table style={S.table}>
@@ -143,7 +197,9 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut: () => void 
             </tbody>
           </table>
         ) : (
-          <p style={S.muted}>{reports ? "No reports yet." : "Loading…"}</p>
+          <p style={S.muted}>
+            {reports ? (search ? "No reports match your search." : "No reports yet.") : "Loading…"}
+          </p>
         )}
       </div>
     </div>
@@ -163,6 +219,9 @@ const S: Record<string, React.CSSProperties> = {
   brand: { fontSize: 22, fontWeight: 800, margin: 0, color: "#4F46E5" },
   muted: { color: "#64748B", fontSize: 14, margin: "4px 0 0" },
   error: { color: "#B91C1C", fontSize: 14 },
+  toolbar: { display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 12, flexWrap: "wrap" },
+  searchForm: { display: "flex", gap: 8, flex: 1, minWidth: 260 },
+  search: { flex: 1, padding: "8px 12px", borderRadius: 10, border: "1px solid #CBD5E1", fontSize: 14 },
   loginCard: {
     maxWidth: 360,
     margin: "12vh auto 0",

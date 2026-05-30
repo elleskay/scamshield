@@ -352,3 +352,71 @@ requirements:
     given: a configured classifier endpoint
     when: the service classifies a message, and separately when the endpoint errors
     then: the model verdict is used when available, otherwise the heuristic fallback is used
+
+  # Phase 5: trusted-sender whitelist. Messages from a registered Sender ID (e.g.
+  # CPF, IRAS, MOM) are channel-verified and shown as trusted, mirroring the real
+  # product's safe-sender whitelisting.
+  - id: SCAM-SENDER-001
+    title: A message from a trusted registered sender is recognized as verified
+    category: data
+    verify: unit
+    severity: medium
+    given: the offline heuristic with an optional sender id
+    when: it scores a message whose sender is a trusted registered sender (e.g. CPF, IRAS)
+    then: it returns verdict clean with a trustedSender label
+
+  - id: SCAM-SENDER-002
+    title: The verdict card shows a verified-sender badge
+    category: ui
+    verify: component
+    severity: low
+    given: a verdict card for a trusted-sender result
+    when: it renders
+    then: it shows a verified-sender badge and the sender label
+
+  - id: SCAM-SENDER-003
+    title: The check endpoint recognizes a trusted sender
+    category: functional
+    verify: integration
+    severity: medium
+    given: the running API
+    when: a client POSTs a message with a trusted sender id to /reports/check
+    then: it responds 200 with verdict clean and trustedSender set
+
+  # Phase 5: scam phone number embedded within a message body.
+  - id: SCAM-NUMINMSG-001
+    title: A message containing a known scam number is flagged
+    category: data
+    verify: unit
+    severity: high
+    given: the offline heuristic
+    when: it scores a message whose body contains a known scam phone number
+    then: it returns verdict scam and surfaces the flagged number
+
+  - id: SCAM-NUMINMSG-002
+    title: The check endpoint flags a known scam number inside a message
+    category: functional
+    verify: integration
+    severity: high
+    given: the running API
+    when: a client POSTs a message containing a known scam number to /reports/check
+    then: it responds 200 with verdict scam and the flagged number
+
+  # Phase 5: admin global search and CSV export by date range.
+  - id: SCAM-ADMIN-005
+    title: An admin can search reports by content, status, or device
+    category: functional
+    verify: integration
+    severity: medium
+    given: the running API with an admin token and several reports
+    when: the admin GETs /admin/reports with a search query q
+    then: it returns only the reports matching the query
+
+  - id: SCAM-ADMIN-006
+    title: An admin can export reports as CSV by date range
+    category: functional
+    verify: integration
+    severity: medium
+    given: the running API with an admin token and some reports
+    when: the admin GETs /admin/reports/export with optional from and to dates
+    then: it responds with text/csv containing a header row and the matching reports

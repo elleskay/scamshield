@@ -3,11 +3,12 @@ import { test, expect } from "@platform/spec-test/vitest";
 import { ReportsService } from "./reports.service";
 import { InMemoryStore } from "./reports.store";
 import { ClassifierService } from "../classifier/classifier.service";
+import { NumbersService } from "../numbers/numbers.service";
 import { OpenSearchService } from "../search/opensearch.service";
 import type { PushService } from "../push/push.service";
 
 function makeService() {
-  const classifier = new ClassifierService();
+  const classifier = new ClassifierService(new NumbersService());
   const search = new OpenSearchService();
   const push = { notifyScam: vi.fn().mockResolvedValue(true) };
   const store = new InMemoryStore();

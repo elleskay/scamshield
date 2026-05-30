@@ -1,8 +1,10 @@
 import { Logger } from "@nestjs/common";
 import type { Pool } from "pg";
 import {
+  endOfRange,
   type AdminReport,
   type NewReport,
+  type ReportFilter,
   type ReportSummary,
   type ReportsStore,
   type Stats,
@@ -163,9 +165,28 @@ export class PostgresStore implements ReportsStore {
     return res.rows.map(toSummaryRow);
   }
 
-  async listAll(): Promise<AdminReport[]> {
+  async listAll(filter?: ReportFilter): Promise<AdminReport[]> {
+    const where: string[] = [];
+    const params: unknown[] = [];
+    if (filter?.from) {
+      params.push(filter.from);
+      where.push(`created_at >= $${params.length}`);
+    }
+    if (filter?.to) {
+      params.push(endOfRange(filter.to));
+      where.push(`created_at <= $${params.length}`);
+    }
+    if (filter?.q?.trim()) {
+      params.push(`%${filter.q.trim()}%`);
+      const p = `$${params.length}`;
+      where.push(
+        `(snippet ILIKE ${p} OR status ILIKE ${p} OR channel ILIKE ${p} OR report_id ILIKE ${p} OR device_token ILIKE ${p})`,
+      );
+    }
+    const clause = where.length ? ` WHERE ${where.join(" AND ")}` : "";
     const res = await this.pool.query<Row>(
-      `SELECT ${COLS} FROM ${this.reports} ORDER BY created_at DESC`,
+      `SELECT ${COLS} FROM ${this.reports}${clause} ORDER BY created_at DESC`,
+      params,
     );
     return res.rows.map(toSummaryRow);
   }

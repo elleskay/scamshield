@@ -32,18 +32,19 @@ export interface ReportSummary {
   createdAt: string;
 }
 
-/** Classify a message. Falls back to the offline heuristic if the API is unreachable. */
-export async function checkMessage(text: string): Promise<CheckResult> {
+/** Classify a message. An optional sender id enables the trusted-sender check.
+ *  Falls back to the offline heuristic if the API is unreachable. */
+export async function checkMessage(text: string, sender?: string): Promise<CheckResult> {
   try {
     const res = await fetch(`${API_URL}/reports/check`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify(sender ? { text, sender } : { text }),
     });
     if (!res.ok) throw new Error(`API ${res.status}`);
     return (await res.json()) as CheckResult;
   } catch {
-    return localHeuristic(text);
+    return localHeuristic(text, { sender });
   }
 }
 

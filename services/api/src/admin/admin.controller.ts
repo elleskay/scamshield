@@ -2,10 +2,12 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   HttpCode,
   NotFoundException,
   Param,
   Patch,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { ReportsService } from "../reports/reports.service";
@@ -19,9 +21,19 @@ import { VerifyReportDto } from "./dto/verify-report.dto";
 export class AdminController {
   constructor(private readonly reports: ReportsService) {}
 
+  // CSV export, optionally bounded by a created-at date range. Declared before the
+  // list route so "reports/export" is not shadowed.
+  @Get("reports/export")
+  @Header("Content-Type", "text/csv; charset=utf-8")
+  @Header("Content-Disposition", 'attachment; filename="scamshield-reports.csv"')
+  exportCsv(@Query("from") from?: string, @Query("to") to?: string, @Query("q") q?: string) {
+    return this.reports.exportCsv({ q, from, to });
+  }
+
+  // List all reports; q searches content/status/channel/id/device, from/to bound dates.
   @Get("reports")
-  list() {
-    return this.reports.listAll();
+  list(@Query("q") q?: string, @Query("from") from?: string, @Query("to") to?: string) {
+    return this.reports.listAll({ q, from, to });
   }
 
   // Set the authoritative status. Marking scam notifies the reporter.

@@ -40,6 +40,7 @@ export default function CheckScreen() {
 
   const [mode, setMode] = useState<Mode>("message");
   const [text, setText] = useState("");
+  const [sender, setSender] = useState("");
   const [number, setNumber] = useState("");
   const [email, setEmail] = useState("");
   const [result, setResult] = useState<ActiveResult | null>(null);
@@ -60,6 +61,7 @@ export default function CheckScreen() {
     setMode(next);
     setResult(null);
     setReportId(null);
+    setSender("");
   }
 
   async function onCheck() {
@@ -67,7 +69,7 @@ export default function CheckScreen() {
     setReportId(null);
     try {
       if (mode === "message") {
-        setResult({ kind: "message", data: await checkMessage(text) });
+        setResult({ kind: "message", data: await checkMessage(text, sender.trim() || undefined) });
       } else if (mode === "email") {
         setResult({ kind: "email", data: await checkEmail(email) });
       } else {
@@ -104,6 +106,7 @@ export default function CheckScreen() {
     result?.kind === "number" && result.data.isVerifiedCaller
       ? { label: result.data.label }
       : null;
+  const msgResult = result?.kind === "message" || result?.kind === "email" ? result.data : null;
   const reportVerdict = result && result.kind !== "number" ? result.data.verdict : null;
   const reportLabel =
     reportVerdict === "scam"
@@ -192,6 +195,28 @@ export default function CheckScreen() {
                 multiline
               />
             </View>
+            {mode === "message" && (
+              <View
+                style={[styles.numberWrap, { backgroundColor: c.inputBg, borderColor: c.border }]}
+              >
+                <MaterialCommunityIcons
+                  name="account-outline"
+                  size={20}
+                  color={c.textMuted}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  testID="sender-input"
+                  style={[styles.input, { color: c.text }]}
+                  placeholder="Sender ID (optional), e.g. CPF"
+                  placeholderTextColor={c.textMuted}
+                  value={sender}
+                  onChangeText={setSender}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                />
+              </View>
+            )}
           </>
         )}
 
@@ -228,6 +253,8 @@ export default function CheckScreen() {
           score={result.data.score}
           reason={result.data.reason}
           verified={verified}
+          trustedSender={msgResult?.trustedSender}
+          flaggedNumber={msgResult?.flaggedNumber}
           reportedCount={result.kind === "number" ? undefined : result.data.reportedCount}
         />
       )}

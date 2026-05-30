@@ -38,3 +38,24 @@ test("[SCAM-EMAIL-002] the email heuristic flags a spoofed-sender lure", () => {
   const ok = localEmailHeuristic("From: mum@gmail.com see you for lunch tomorrow");
   expect(ok.verdict).toBe("clean");
 });
+
+test("[SCAM-SENDER-001] a message from a trusted registered sender is verified", () => {
+  // A registered Sender ID (case/format-insensitive) is trusted.
+  const r = localHeuristic("Your CPF contribution has been credited.", { sender: "CPF" });
+  expect(r.verdict).toBe("clean");
+  expect(r.trustedSender).toBe("CPF Board");
+
+  // An unknown sender gets no trusted treatment.
+  const unknown = localHeuristic("Your account statement is ready.", { sender: "DBS-PROMO" });
+  expect(unknown.trustedSender).toBeUndefined();
+});
+
+test("[SCAM-NUMINMSG-001] a message containing a known scam number is flagged", () => {
+  const r = localHeuristic("Hi, please call our officer at +65 8000 1234 to clear your parcel.");
+  expect(r.verdict).toBe("scam");
+  expect(r.flaggedNumber).toBe("6580001234");
+
+  // An ordinary number in a message is not flagged.
+  const ok = localHeuristic("Call me at 9123 4567 when you reach.");
+  expect(ok.flaggedNumber).toBeUndefined();
+});

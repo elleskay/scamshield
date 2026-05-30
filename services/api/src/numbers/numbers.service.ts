@@ -78,4 +78,17 @@ export class NumbersService {
       .map(Number)
       .sort((a, b) => a - b);
   }
+
+  /**
+   * The first known scam phone number embedded in a block of text, or null. Used
+   * to flag a message that tells the reader to call a reported scam number.
+   */
+  findScamNumber(text: string): string | null {
+    const candidates = text.match(/\+?\d[\d\s().-]{5,}\d/g) ?? [];
+    for (const candidate of candidates) {
+      const digits = candidate.replace(/\D/g, "");
+      if (SCAM.has(digits)) return digits;
+    }
+    return null;
+  }
 }

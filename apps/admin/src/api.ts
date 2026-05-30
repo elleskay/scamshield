@@ -11,12 +11,23 @@ export interface AdminReport {
   createdAt: string;
 }
 
-export async function listReports(token: string): Promise<AdminReport[]> {
-  const res = await fetch(`${API_URL}/admin/reports`, {
+export async function listReports(token: string, q?: string): Promise<AdminReport[]> {
+  const qs = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : "";
+  const res = await fetch(`${API_URL}/admin/reports${qs}`, {
     headers: { authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error(`list failed: ${res.status}`);
   return (await res.json()) as AdminReport[];
+}
+
+/** Fetch reports as a CSV document (optionally filtered by the search query). */
+export async function exportReportsCsv(token: string, q?: string): Promise<string> {
+  const qs = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : "";
+  const res = await fetch(`${API_URL}/admin/reports/export${qs}`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`export failed: ${res.status}`);
+  return await res.text();
 }
 
 export async function verifyReport(

@@ -10,11 +10,17 @@ import {
   snippetOf,
   toSummary,
   type AdminReport,
+  type ReportFilter,
   type ReportSummary,
   type ReportsStore,
   type Stats,
   type Verdict,
 } from "./reports.store";
+
+/** Escape a value for a CSV cell (RFC 4180): quote if it contains , " or newline. */
+function csvCell(value: string): string {
+  return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
 
 // Re-export the domain types so existing importers (controllers, consumer) are
 // unaffected by the move to reports.store.ts.
@@ -58,9 +64,9 @@ export class ReportsService implements OnModuleInit {
     await this.store.init();
   }
 
-  async check(text: string): Promise<CheckResponse> {
+  async check(text: string, sender?: string): Promise<CheckResponse> {
     await this.store.recordCheck();
-    const classification = await this.classifier.classify(text);
+    const classification = await this.classifier.classify(text, { sender });
     return { ...classification, reportedCount: await this.store.clusterCount(clusterKey(text)) };
   }
 
@@ -87,9 +93,24 @@ export class ReportsService implements OnModuleInit {
     return deviceToken ? this.store.listByDevice(deviceToken) : Promise.resolve([]);
   }
 
-  /** All reports, newest first. For the admin verification dashboard. */
-  listAll(): Promise<AdminReport[]> {
-    return this.store.listAll();
+  /** All reports, newest first, optionally filtered. For the admin dashboard. */
+  listAll(filter?: ReportFilter): Promise<AdminReport[]> {
+    return this.store.listAll(filter);
+  }
+
+  /** The filtered reports rendered as a CSV document (header row + one row each). */
+  async exportCsv(filter?: ReportFilter): Promise<string> {
+    const rows = await this.store.listAll(filter);
+    const header = ["reportId", "createdAt", "channel", "status", "suggestedVerdict", "snippet"];
+    const lines = [header.join(",")];
+    for (const r of rows) {
+      lines.push(
+        [r.reportId, r.createdAt, r.channel ?? "", r.status, r.suggestedVerdict ?? "", r.snippet]
+          .map(csvCell)
+          .join(","),
+      );
+    }
+    return `${lines.join("\n")}\n`;
   }
 
   /**

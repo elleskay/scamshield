@@ -68,4 +68,48 @@ describe("admin verification API", () => {
       .set({ Authorization: "Bearer wrong" });
     expect(badToken.status).toBe(403);
   });
+
+  test("[SCAM-ADMIN-005] admin can search reports by content, status, or device", async () => {
+    const marker = `zzmarker${Date.now()}`;
+    await request(app.getHttpServer())
+      .post("/reports")
+      .send({ text: `please ${marker} confirm http://evil.example`, deviceToken: "d-search" });
+
+    const hit = await request(app.getHttpServer())
+      .get("/admin/reports")
+      .query({ q: marker })
+      .set(auth);
+    expect(hit.status).toBe(200);
+    expect(hit.body.length).toBeGreaterThan(0);
+    expect(
+      hit.body.every((r: { snippet: string }) => r.snippet.toLowerCase().includes(marker)),
+    ).toBe(true);
+
+    // A query that matches nothing returns an empty list.
+    const miss = await request(app.getHttpServer())
+      .get("/admin/reports")
+      .query({ q: "no-such-content-xyzzy" })
+      .set(auth);
+    expect(miss.body).toHaveLength(0);
+  });
+
+  test("[SCAM-ADMIN-006] admin can export reports as CSV by date range", async () => {
+    await request(app.getHttpServer())
+      .post("/reports")
+      .send({ text: "export me http://evil.example", deviceToken: "d-export" });
+
+    const csv = await request(app.getHttpServer()).get("/admin/reports/export").set(auth);
+    expect(csv.status).toBe(200);
+    expect(csv.headers["content-type"]).toContain("text/csv");
+    const lines = csv.text.trim().split("\n");
+    expect(lines[0]).toBe("reportId,createdAt,channel,status,suggestedVerdict,snippet");
+    expect(lines.length).toBeGreaterThan(1);
+
+    // A future lower bound filters everything out, leaving only the header.
+    const future = await request(app.getHttpServer())
+      .get("/admin/reports/export")
+      .query({ from: "2099-01-01" })
+      .set(auth);
+    expect(future.text.trim().split("\n")).toHaveLength(1);
+  });
 });

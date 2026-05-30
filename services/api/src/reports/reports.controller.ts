@@ -12,7 +12,7 @@ export class ReportsController {
   @HttpCode(200)
   @Post("check")
   async check(@Body() dto: CheckMessageDto) {
-    return this.reports.check(dto.text);
+    return this.reports.check(dto.text, dto.sender);
   }
 
   // Enqueue a report for async processing. Returns a report id immediately.

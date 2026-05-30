@@ -10,13 +10,26 @@ export interface VerdictCardProps {
   reason: string;
   /** When set, render the trusted "verified caller" treatment instead. */
   verified?: { label?: string } | null;
+  /** When set, render the trusted "verified sender" treatment (registered Sender ID). */
+  trustedSender?: string | null;
+  /** A known scam phone number found inside the message; shows a warning line. */
+  flaggedNumber?: string | null;
   /** How many similar reports exist; shows a "reported N times" line when > 1. */
   reportedCount?: number;
 }
 
-/** Shared result card for both message and number checks. Animates in on mount.
- *  Always carries testID="verdict"; verified callers add testID="verified-badge". */
-export function VerdictCard({ verdict, score, reason, verified, reportedCount }: VerdictCardProps) {
+/** Shared result card for message and number checks. Animates in on mount. Always
+ *  carries testID="verdict"; verified callers add testID="verified-badge" and
+ *  trusted senders add testID="verified-sender-badge". */
+export function VerdictCard({
+  verdict,
+  score,
+  reason,
+  verified,
+  trustedSender,
+  flaggedNumber,
+  reportedCount,
+}: VerdictCardProps) {
   const dark = useColorScheme() === "dark";
   const c = palette(dark);
 
@@ -57,6 +70,36 @@ export function VerdictCard({ verdict, score, reason, verified, reportedCount }:
     );
   }
 
+  if (trustedSender) {
+    return (
+      <Animated.View
+        testID="verdict"
+        style={[
+          styles.card,
+          { backgroundColor: c.surface, borderColor: "#A7F3D0", borderLeftColor: "#059669" },
+          styles.leftAccent,
+          animated,
+        ]}
+      >
+        <View style={styles.head}>
+          <View style={[styles.badge, { backgroundColor: "#ECFDF5" }]}>
+            <MaterialCommunityIcons
+              testID="verified-sender-badge"
+              name="check-decagram"
+              size={28}
+              color="#059669"
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.label, { color: "#059669" }]}>Verified sender</Text>
+            <Text style={[styles.senderName, { color: c.text }]}>{trustedSender}</Text>
+            <Text style={[styles.reason, { color: c.textMuted }]}>{reason}</Text>
+          </View>
+        </View>
+      </Animated.View>
+    );
+  }
+
   const sev = severity[verdict];
   const pct = Math.round(score * 100);
   return (
@@ -83,6 +126,15 @@ export function VerdictCard({ verdict, score, reason, verified, reportedCount }:
       <View style={[styles.meterTrack, { backgroundColor: c.surfaceAlt }]}>
         <View style={[styles.meterFill, { width: `${pct}%`, backgroundColor: sev.color }]} />
       </View>
+
+      {flaggedNumber && (
+        <View testID="flagged-number" style={[styles.flaggedRow, { backgroundColor: sev.bg }]}>
+          <MaterialCommunityIcons name="phone-alert" size={15} color={sev.color} />
+          <Text style={[styles.flagged, { color: sev.color }]}>
+            Contains a reported scam number: {flaggedNumber}
+          </Text>
+        </View>
+      )}
 
       {reportedCount != null && reportedCount > 1 && (
         <View style={styles.reportedRow}>
@@ -124,7 +176,17 @@ const styles = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", gap: 14 },
   badge: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   label: { fontSize: 17, fontWeight: "800", letterSpacing: 0.2 },
+  senderName: { fontSize: 15, fontWeight: "700", marginTop: 1 },
   reason: { fontSize: 14, lineHeight: 20, marginTop: 2 },
+  flaggedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+  },
+  flagged: { fontSize: 13, fontWeight: "600", flex: 1 },
   meterLabel: { fontSize: 12, fontWeight: "600", marginTop: 4 },
   meterTrack: { height: 8, borderRadius: 99, overflow: "hidden" },
   meterFill: { height: 8, borderRadius: 99 },

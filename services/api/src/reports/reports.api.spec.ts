@@ -41,6 +41,24 @@ describe("reports HTTP API", () => {
     expect(unknownField.status).toBe(400);
   });
 
+  test("[SCAM-SENDER-003] the check endpoint recognizes a trusted sender", async () => {
+    const res = await request(app.getHttpServer())
+      .post("/reports/check")
+      .send({ text: "Your CPF contribution has been credited.", sender: "CPF" });
+    expect(res.status).toBe(200);
+    expect(res.body.verdict).toBe("clean");
+    expect(res.body.trustedSender).toBe("CPF Board");
+  });
+
+  test("[SCAM-NUMINMSG-002] the check endpoint flags a known scam number in a message", async () => {
+    const res = await request(app.getHttpServer())
+      .post("/reports/check")
+      .send({ text: "Call our officer at +65 8000 1234 to clear your parcel." });
+    expect(res.status).toBe(200);
+    expect(res.body.verdict).toBe("scam");
+    expect(res.body.flaggedNumber).toBe("6580001234");
+  });
+
   test("[SCAM-REPORT-003] a device can list its own reports with status", async () => {
     const deviceToken = `dev-${Date.now()}`;
 

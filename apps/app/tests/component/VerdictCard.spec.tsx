@@ -12,3 +12,18 @@ test("[SCAM-VERDICT-001] the verdict card shows a conversational label, spam edu
   // Scam-vs-spam education.
   expect(screen.getByText(/not necessarily a scam/i)).toBeTruthy();
 });
+
+test("[SCAM-SENDER-002] the verdict card shows a verified-sender badge and label", () => {
+  render(
+    <VerdictCard
+      verdict="clean"
+      score={0.05}
+      reason="Registered sender."
+      trustedSender="CPF Board"
+    />,
+  );
+
+  expect(screen.getByTestId("verified-sender-badge")).toBeTruthy();
+  expect(screen.getByText("Verified sender")).toBeTruthy();
+  expect(screen.getByText("CPF Board")).toBeTruthy();
+});

@@ -49,6 +49,16 @@ export interface NewReport {
 
 export const REPORTS_STORE = "REPORTS_STORE";
 
+/** Admin list/export filter: a free-text query and an inclusive created-at range. */
+export interface ReportFilter {
+  /** Case-insensitive match across snippet, status, channel, id, and device. */
+  q?: string;
+  /** Inclusive lower bound; a YYYY-MM-DD date or a full ISO timestamp. */
+  from?: string;
+  /** Inclusive upper bound; a YYYY-MM-DD date or a full ISO timestamp. */
+  to?: string;
+}
+
 export interface ReportsStore {
   init(): Promise<void>;
   recordCheck(): Promise<void>;
@@ -60,8 +70,14 @@ export interface ReportsStore {
   /** Sets the authoritative status; returns the updated row (with deviceToken) or null. */
   verify(reportId: string, verdict: Verdict): Promise<StoredReport | null>;
   listByDevice(deviceToken: string): Promise<ReportSummary[]>;
-  listAll(): Promise<AdminReport[]>;
+  /** All reports, newest first, optionally filtered for the admin dashboard. */
+  listAll(filter?: ReportFilter): Promise<AdminReport[]>;
   stats(): Promise<Stats>;
+}
+
+/** Normalize an inclusive upper bound: a bare date covers the whole day. */
+export function endOfRange(to: string): string {
+  return to.length <= 10 ? `${to}T23:59:59.999Z` : to;
 }
 
 /** A short, single-line preview of the reported content. */
@@ -149,8 +165,23 @@ export class InMemoryStore implements ReportsStore {
       .map(toSummary);
   }
 
-  async listAll(): Promise<AdminReport[]> {
+  async listAll(filter?: ReportFilter): Promise<AdminReport[]> {
+    const q = filter?.q?.toLowerCase().trim();
+    const from = filter?.from;
+    const to = filter?.to ? endOfRange(filter.to) : undefined;
     return Array.from(this.byId.values())
+      .filter((r) => {
+        if (from && r.createdAt < from) return false;
+        if (to && r.createdAt > to) return false;
+        if (q) {
+          const hay = [r.snippet, r.status, r.channel, r.reportId, r.deviceToken]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      })
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .map(toSummary);
   }

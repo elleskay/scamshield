@@ -46,5 +46,22 @@ describe.skipIf(!url)("PostgresStore", () => {
     const stats = await store.stats();
     expect(stats.checks).toBeGreaterThanOrEqual(1);
     expect(stats.confirmedScams).toBeGreaterThanOrEqual(1);
+
+    // Admin search + date-range filtering (the Postgres ILIKE / created_at SQL).
+    const unique = `zz${randomUUID().replace(/-/g, "")}`;
+    const searchId = randomUUID();
+    await store.addReport({
+      reportId: searchId,
+      deviceToken: device,
+      channel: "message",
+      snippet: `needle ${unique} http://db-test.example`,
+      createdAt: new Date().toISOString(),
+    });
+    const found = await store.listAll({ q: unique });
+    expect(found).toHaveLength(1);
+    expect(found[0]?.reportId).toBe(searchId);
+
+    // A future lower bound excludes everything.
+    expect(await store.listAll({ from: "2999-01-01" })).toHaveLength(0);
   });
 });
