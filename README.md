@@ -2,6 +2,9 @@
 
 A check-and-report anti-scam app: paste a suspicious message, get a verdict, report confirmed scams. A React Native (Expo) app backed by a NestJS API on AWS serverless.
 
+**Live demo:** https://elleskay.github.io/scamshield/ (the real app, running in your browser via react-native-web, against the live API below)
+**Live API:** https://14cet1wgg0.execute-api.ap-southeast-1.amazonaws.com/health
+
 This is a personal portfolio build that mirrors the **stack and shape** of Singapore's ScamShield. It is **not affiliated with, endorsed by, or connected to** the official ScamShield, Open Government Products, GovTech, or the Singapore Police Force. "ScamShield" is used here only to describe what this replica is modeled on.
 
 ## Why it exists
