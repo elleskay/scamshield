@@ -1,19 +1,20 @@
 # ScamShield (unofficial)
 
-A check-and-report anti-scam app: paste a suspicious message, get a verdict, report confirmed scams. A React Native (Expo) app backed by a NestJS API on AWS serverless.
+An anti-scam app mirroring Singapore's ScamShield: check a suspicious **message** or **phone number**, get a verdict, report confirmed scams and track their status, and read scam-awareness alerts. A React Native (Expo) tabbed app backed by a NestJS API on AWS serverless, plus the native **call-screening / SMS-filtering** layer that JavaScript cannot do.
 
 This is a personal portfolio build that mirrors the **stack and shape** of Singapore's ScamShield. It is **not affiliated with, endorsed by, or connected to** the official ScamShield, Open Government Products, GovTech, or the Singapore Police Force. "ScamShield" is used here only to describe what this replica is modeled on.
 
 ## Demo
 
-The Android app running on a device, against the **live AWS API** (the verdict text and the report reference id both come from the deployed backend):
+The four surfaces, against the **live AWS API** (verdicts, the verified-caller label, report status, and alerts all come from the deployed backend):
 
-| 1. Check a message | 2. Live verdict | 3. Report confirmed |
-|---|---|---|
-| ![check screen](docs/demo/01-check.png) | ![scam verdict](docs/demo/02-scam-verdict.png) | ![report confirmed](docs/demo/03-report-confirmed.png) |
+| Check a message | Check a number | My reports + status | Scam alerts |
+|---|---|---|---|
+| ![check](docs/demo/01-check.png) | ![check call](docs/demo/02-check-call.png) | ![reports](docs/demo/03-reports.png) | ![alerts](docs/demo/04-alerts.png) |
 
 - **Live API:** https://14cet1wgg0.execute-api.ap-southeast-1.amazonaws.com/health
-- **Browser preview** (UI only, via react-native-web, not the native app): https://elleskay.github.io/scamshield/
+- **Browser preview** (the same React Native components via react-native-web, against the live API): https://elleskay.github.io/scamshield/
+- The **native Android app** is exercised end to end by Maestro on an emulator in CI (4/4 journeys) and built as a signed release APK; the native call-screening service is wired and compiled in (see `docs/MOBILE.md`).
 
 ## Why it exists
 
@@ -32,17 +33,19 @@ Built to demonstrate the stack and engineering practices of the real ScamShield 
 
 ## What is proven (not just written)
 
-Every requirement in `specs/scamshield.yml` is verified by a real run. The coverage gate is **10/10**:
+Every requirement in `specs/scamshield.yml` is verified by a real run at its declared layer, in CI:
 
 | Layer | Requirements | Proven by |
 |---|---|---|
-| Unit (data) | classifier verdicts | jest-expo, in CI |
-| Component (ui) | check button enable/disable | jest-expo + React Native Testing Library, in CI |
-| Integration (API) | `/reports/check` 200, validation 400s, idempotent SQS consumer, push on scam | vitest + supertest, in CI |
-| E2E (journey) | check-a-message and report-a-scam flows | **Maestro on a real Android emulator against the live API**, in CI |
+| Unit (data) | message + number classifier verdicts, native block decision | jest-expo, in CI |
+| Component (ui) | check button enable/disable, verified-caller badge, alerts list | jest-expo + React Native Testing Library, in CI |
+| Integration (API) | `/reports/check`, `/numbers/check` + blocklist, `/reports` listing by device, `/alerts`, validation 400s, idempotent SQS consumer, push on scam | vitest + supertest, in CI |
+| E2E (journey) | check-a-message, check-a-number, report-a-scam, report-appears-under-Reports | **Maestro on an Android emulator against the live API**, in CI (4/4 flows) |
 | Manual (security) | no secrets in the release bundle | signed verification artifact (real bundle scan) |
 
-Beyond CI, the API was deployed to AWS for real (`cdk deploy`) and passed a full post-deploy smoke test (6/6), then torn down. The deploy path is reproducible via `infra/cdk`.
+The API runs live on AWS (`cdk deploy`, reproducible via `infra/cdk`); the browser preview and Maestro e2e both hit it.
+
+The native Android `CallScreeningService` is wired by an Expo config plugin (verified: `expo prebuild` injects it into the manifest and it compiles into the release APK); its block decision is unit-tested, and the on-device call-rejection procedure is in `docs/MOBILE.md`. The iOS Call Directory + Message Filter extensions ship as code but need Apple signing + a device to verify, so they are documented there, not claimed as proven.
 
 ## How it is tested (spec-driven gate)
 
@@ -66,20 +69,30 @@ cd infra/cdk/_template && npm install && npx cdk deploy
 ## Structure
 
 ```
-apps/app/            Expo app (check + report screens, classifier, API client)
-services/api/        NestJS API (reports check/submit, SQS consumer, classifier, push)
+apps/app/
+  app/(tabs)/        Check / Reports / Alerts screens (Expo Router tabs)
+  components/        Shared UI (header, verdict card, alert list)
+  lib/               API client, classifiers, device token, blocklist sync
+  native/            CallScreeningService (Kotlin), Call Directory + Message Filter (Swift)
+  plugins/           Expo config plugins that wire the native code at prebuild
+  .maestro/          e2e flows
+services/api/        NestJS API (reports, numbers, alerts, SQS consumer, classifier, push)
 infra/cdk/           CDK: NestjsApi construct (Lambda + API Gateway + SQS)
 packages/spec-test/  Spec-driven test runner + coverage gate
 specs/scamshield.yml The requirement spec
-verification/        Signed artifacts for native/manual requirements
-.maestro/            (in apps/app) e2e flows
 ```
 
 ## Scope and roadmap
 
-In scope (the shippable spine): check-and-report, API + SQS intake, push on scam, input validation, no secrets in the bundle.
+**Phase 1 (the spine):** check-and-report a message, API + SQS intake, push on scam, input validation, no secrets in the bundle.
 
-Deferred to a Phase 2 (the real ScamShield's signature features): native **call blocking / identification** and **SMS filtering**. These cannot be done in JavaScript, they require iOS Call Directory + Message Filter extensions (Swift) and Android CallScreeningService (Kotlin), plus device builds and signed real-device verification. Reference implementations and the wiring live in the platform template.
+**Phase 2 (built):** the broader ScamShield surface, in `Check / Reports / Alerts` tabs.
+- **Check Call**: look up a phone number (known scam / verified government caller / unknown), backed by `/numbers/check`.
+- **My Reports**: a device sees its own reports and their verification status (`queued -> scam/suspicious/clean`).
+- **Scam Alerts**: an awareness feed of emerging-scam advisories.
+- **Native call/SMS interception**: Android `CallScreeningService` (Kotlin) + iOS Call Directory and Message Filter extensions (Swift), wired by Expo config plugins, fed by a blocklist the app syncs from `/numbers/blocklist`. Android is verified end to end on an emulator; iOS verification needs Apple signing (see `docs/MOBILE.md`).
+
+Not built (out of scope for this portfolio): the police admin dashboard, the WhatsApp ScamShield Bot, and account auth (checks are anonymous; reports carry an opaque device token).
 
 ## Disclaimer
 
