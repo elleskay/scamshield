@@ -23,3 +23,51 @@ export function localHeuristic(text: string): CheckResult {
   }
   return { verdict: "clean", score: 0.1, reason: "No common scam markers found." };
 }
+
+export interface NumberCheckResult {
+  verdict: Verdict;
+  score: number;
+  reason: string;
+  isVerifiedCaller: boolean;
+  label?: string;
+}
+
+// Mirrors services/api/src/numbers/numbers.service.ts seed + logic so the
+// device's offline fallback agrees with the server. Numbers are fake placeholders.
+const VERIFIED_NUMBERS: Record<string, string> = {
+  "18000001111": "CPF Board",
+  "18000002222": "Ministry of Manpower",
+  "18000003333": "HealthHub",
+};
+const SCAM_NUMBERS = new Set(["6580001234", "18005550199", "6590009999"]);
+
+/** Offline fallback for "Check Call". Same shape and seed as the server. */
+export function localNumberHeuristic(raw: string): NumberCheckResult {
+  const digits = raw.replace(/\D/g, "");
+  const label = VERIFIED_NUMBERS[digits];
+  if (label) {
+    return { verdict: "clean", score: 0.02, reason: `This number belongs to ${label}.`, isVerifiedCaller: true, label };
+  }
+  if (SCAM_NUMBERS.has(digits)) {
+    return {
+      verdict: "scam",
+      score: 0.97,
+      reason: "This number has been reported as a scam.",
+      isVerifiedCaller: false,
+    };
+  }
+  if (digits.length > 0 && digits.length < 7) {
+    return {
+      verdict: "suspicious",
+      score: 0.5,
+      reason: "Unusually short number, sometimes used to mask the caller.",
+      isVerifiedCaller: false,
+    };
+  }
+  return {
+    verdict: "clean",
+    score: 0.15,
+    reason: "Not a known scam number. Stay alert if it is unexpected.",
+    isVerifiedCaller: false,
+  };
+}

@@ -1,0 +1,14 @@
+appId: com.elleskay.scamshield
+name: "[SCAM-CALL-004] check a suspicious phone number shows a verdict"
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "mode-number"
+- tapOn:
+    id: "number-input"
+- inputText: "+65 8000 1234"
+- tapOn:
+    id: "check-button"
+- assertVisible:
+    id: "verdict"

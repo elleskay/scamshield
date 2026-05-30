@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -12,33 +12,49 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
-import { checkMessage, submitReport, type CheckResult } from "@/lib/api";
+import { VerdictCard } from "@/components/VerdictCard";
+import {
+  checkMessage,
+  checkNumber,
+  submitReport,
+  type CheckResult,
+  type NumberCheckResult,
+} from "@/lib/api";
 import { getDeviceToken } from "@/lib/device";
-import { brand, palette, severity } from "@/lib/theme";
+import { brand, palette } from "@/lib/theme";
+
+type Mode = "message" | "number";
+type ActiveResult =
+  | { kind: "message"; data: CheckResult }
+  | { kind: "number"; data: NumberCheckResult };
 
 export default function CheckScreen() {
   const dark = useColorScheme() === "dark";
   const c = palette(dark);
 
+  const [mode, setMode] = useState<Mode>("message");
   const [text, setText] = useState("");
-  const [result, setResult] = useState<CheckResult | null>(null);
+  const [number, setNumber] = useState("");
+  const [result, setResult] = useState<ActiveResult | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Entrance animation for the verdict card.
-  const reveal = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    reveal.setValue(0);
-    if (result) {
-      Animated.spring(reveal, { toValue: 1, useNativeDriver: true, friction: 7 }).start();
-    }
-  }, [result, reveal]);
+  function switchMode(next: Mode) {
+    if (next === mode) return;
+    setMode(next);
+    setResult(null);
+    setReportId(null);
+  }
 
   async function onCheck() {
     setBusy(true);
     setReportId(null);
     try {
-      setResult(await checkMessage(text));
+      if (mode === "message") {
+        setResult({ kind: "message", data: await checkMessage(text) });
+      } else {
+        setResult({ kind: "number", data: await checkNumber(number) });
+      }
     } finally {
       setBusy(false);
     }
@@ -55,39 +71,86 @@ export default function CheckScreen() {
     }
   }
 
-  const flagged = result !== null && result.verdict !== "clean";
-  const sev = result ? severity[result.verdict] : null;
-  const canCheck = !!text && !busy;
+  const canCheck = (mode === "message" ? !!text : !!number) && !busy;
   const showIntro = !result && !reportId;
+  const reportable = result?.kind === "message" && result.data.verdict !== "clean";
+  const verified =
+    result?.kind === "number" && result.data.isVerifiedCaller
+      ? { label: result.data.label }
+      : null;
 
   return (
     <Screen>
       <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
-        <Text style={[styles.cardTitle, { color: c.text }]}>Check a message</Text>
-        <Text style={[styles.cardHint, { color: c.textMuted }]}>
-          Paste a suspicious SMS, message, or link and we will assess it.
-        </Text>
-
-        <View style={[styles.inputWrap, { backgroundColor: c.inputBg, borderColor: c.border }]}>
-          <MaterialCommunityIcons
-            name="message-text-outline"
-            size={20}
-            color={c.textMuted}
-            style={styles.inputIcon}
+        <View style={[styles.segment, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+          <SegmentButton
+            testID="mode-message"
+            icon="message-text-outline"
+            label="Message"
+            active={mode === "message"}
+            onPress={() => switchMode("message")}
           />
-          <TextInput
-            testID="message-input"
-            style={[styles.input, { color: c.text }]}
-            placeholder="e.g. Verify your bank account at..."
-            placeholderTextColor={c.textMuted}
-            value={text}
-            onChangeText={setText}
-            multiline
+          <SegmentButton
+            testID="mode-number"
+            icon="phone-outline"
+            label="Number"
+            active={mode === "number"}
+            onPress={() => switchMode("number")}
           />
         </View>
 
+        {mode === "message" ? (
+          <>
+            <Text style={[styles.cardHint, { color: c.textMuted }]}>
+              Paste a suspicious SMS, message, or link and we will assess it.
+            </Text>
+            <View style={[styles.inputWrap, { backgroundColor: c.inputBg, borderColor: c.border }]}>
+              <MaterialCommunityIcons
+                name="message-text-outline"
+                size={20}
+                color={c.textMuted}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                testID="message-input"
+                style={[styles.input, { color: c.text }]}
+                placeholder="e.g. Verify your bank account at..."
+                placeholderTextColor={c.textMuted}
+                value={text}
+                onChangeText={setText}
+                multiline
+              />
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={[styles.cardHint, { color: c.textMuted }]}>
+              Enter a phone number to see if it is a known scam or a verified caller.
+            </Text>
+            <View style={[styles.numberWrap, { backgroundColor: c.inputBg, borderColor: c.border }]}>
+              <MaterialCommunityIcons
+                name="phone-outline"
+                size={20}
+                color={c.textMuted}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                testID="number-input"
+                style={[styles.input, { color: c.text }]}
+                placeholder="e.g. +65 8000 1234"
+                placeholderTextColor={c.textMuted}
+                value={number}
+                onChangeText={setNumber}
+                keyboardType="phone-pad"
+                autoCorrect={false}
+              />
+            </View>
+          </>
+        )}
+
         <CheckButton
           testID="check-button"
+          label={mode === "message" ? "Check message" : "Check number"}
           disabled={!canCheck}
           busy={busy}
           onPress={() => void onCheck()}
@@ -110,48 +173,16 @@ export default function CheckScreen() {
         </View>
       )}
 
-      {result && sev && (
-        <Animated.View
-          testID="verdict"
-          style={[
-            styles.card,
-            styles.verdictCard,
-            {
-              backgroundColor: c.surface,
-              borderColor: c.border,
-              borderLeftColor: sev.color,
-              opacity: reveal,
-              transform: [
-                { translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) },
-              ],
-            },
-          ]}
-        >
-          <View style={styles.verdictHead}>
-            <View style={[styles.badge, { backgroundColor: sev.bg }]}>
-              <MaterialCommunityIcons name={sev.icon as never} size={28} color={sev.color} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.verdictLabel, { color: sev.color }]}>{sev.label}</Text>
-              <Text style={[styles.verdictReason, { color: c.textMuted }]}>{result.reason}</Text>
-            </View>
-          </View>
-
-          <Text style={[styles.meterLabel, { color: c.textMuted }]}>
-            Risk {Math.round(result.score * 100)}%
-          </Text>
-          <View style={[styles.meterTrack, { backgroundColor: c.surfaceAlt }]}>
-            <View
-              style={[
-                styles.meterFill,
-                { width: `${Math.round(result.score * 100)}%`, backgroundColor: sev.color },
-              ]}
-            />
-          </View>
-        </Animated.View>
+      {result && (
+        <VerdictCard
+          verdict={result.data.verdict}
+          score={result.data.score}
+          reason={result.data.reason}
+          verified={verified}
+        />
       )}
 
-      {flagged && sev && !reportId && (
+      {reportable && !reportId && (
         <Pressable
           testID="report-button"
           accessibilityRole="button"
@@ -159,7 +190,7 @@ export default function CheckScreen() {
           onPress={() => void onReport()}
           style={({ pressed }) => [
             styles.reportBtn,
-            { backgroundColor: sev.color, opacity: busy ? 0.6 : pressed ? 0.9 : 1 },
+            { backgroundColor: "#DC2626", opacity: busy ? 0.6 : pressed ? 0.9 : 1 },
           ]}
         >
           <MaterialCommunityIcons name="flag-outline" size={20} color="#fff" />
@@ -187,13 +218,41 @@ export default function CheckScreen() {
   );
 }
 
+function SegmentButton({
+  testID,
+  icon,
+  label,
+  active,
+  onPress,
+}: {
+  testID: string;
+  icon: string;
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[styles.segmentBtn, active && { backgroundColor: brand.indigo }]}
+    >
+      <MaterialCommunityIcons name={icon as never} size={16} color={active ? "#fff" : "#64748B"} />
+      <Text style={[styles.segmentText, { color: active ? "#fff" : "#64748B" }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 function CheckButton({
   testID,
+  label,
   disabled,
   busy,
   onPress,
 }: {
   testID: string;
+  label: string;
   disabled: boolean;
   busy: boolean;
   onPress: () => void;
@@ -223,7 +282,7 @@ function CheckButton({
           ) : (
             <>
               <MaterialCommunityIcons name="shield-search" size={20} color="#fff" />
-              <Text style={styles.ctaText}>Check message</Text>
+              <Text style={styles.ctaText}>{label}</Text>
             </>
           )}
         </LinearGradient>
@@ -235,8 +294,8 @@ function CheckButton({
 const STEPS = [
   {
     icon: "clipboard-text-outline",
-    title: "Paste a message",
-    body: "An SMS, email, or link you are not sure about.",
+    title: "Check a message or number",
+    body: "An SMS, link, or phone number you are not sure about.",
   },
   {
     icon: "shield-search",
@@ -262,8 +321,19 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 2,
   },
-  cardTitle: { fontSize: 19, fontWeight: "700" },
-  cardHint: { fontSize: 14, lineHeight: 20, marginTop: -4 },
+  segment: { flexDirection: "row", borderRadius: 12, borderWidth: 1, padding: 4, gap: 4 },
+  segmentBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 9,
+  },
+  segmentText: { fontSize: 14, fontWeight: "700" },
+
+  cardHint: { fontSize: 14, lineHeight: 20 },
   inputWrap: {
     flexDirection: "row",
     borderWidth: 1,
@@ -271,6 +341,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 12,
     minHeight: 110,
+  },
+  numberWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    minHeight: 54,
   },
   inputIcon: { marginTop: 2, marginRight: 8 },
   input: { flex: 1, fontSize: 16, lineHeight: 22, textAlignVertical: "top", paddingBottom: 12 },
@@ -284,15 +362,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   ctaText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-
-  verdictCard: { borderLeftWidth: 5 },
-  verdictHead: { flexDirection: "row", alignItems: "center", gap: 14 },
-  badge: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  verdictLabel: { fontSize: 20, fontWeight: "800", letterSpacing: 0.3 },
-  verdictReason: { fontSize: 14, lineHeight: 20, marginTop: 2 },
-  meterLabel: { fontSize: 12, fontWeight: "600", marginTop: 4 },
-  meterTrack: { height: 8, borderRadius: 99, overflow: "hidden" },
-  meterFill: { height: 8, borderRadius: 99 },
 
   reportBtn: {
     flexDirection: "row",

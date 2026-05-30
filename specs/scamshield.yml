@@ -105,3 +105,45 @@ requirements:
     given: a release build of the app
     when: the bundle is inspected
     then: no API keys or signing secrets are present, only EXPO_PUBLIC_ values
+
+  # Phase 2: Check Call (suspicious phone numbers). Mirrors the real ScamShield
+  # "Check Call" feature: a number is a known scam, a verified government caller,
+  # or unknown.
+  - id: SCAM-CALL-001
+    title: The check-number endpoint classifies a phone number
+    category: functional
+    verify: integration
+    severity: high
+    given: the running API
+    when: a client POSTs a number to /numbers/check
+    then: it responds 200 with a verdict, score, reason, and isVerifiedCaller; the blocklist endpoint lists known scam numbers
+    tags: [call]
+
+  - id: SCAM-CALL-002
+    title: Known scam and verified-caller numbers are classified
+    category: data
+    verify: unit
+    severity: high
+    given: the offline number heuristic
+    when: it classifies a seeded scam number and a seeded government number
+    then: the scam number returns verdict scam and the government number returns clean with isVerifiedCaller true
+
+  - id: SCAM-CALL-003
+    title: Number mode shows a verdict and marks verified callers
+    category: ui
+    verify: component
+    severity: medium
+    given: the Check screen switched to Number mode
+    when: the user checks a verified government number
+    then: a verdict card is shown with a verified-caller badge
+
+  - id: SCAM-CALL-004
+    title: User can check a suspicious phone number and see a verdict
+    category: functional
+    verify: e2e
+    platforms: [ios, android]
+    severity: high
+    given: the user is on the Check screen in Number mode
+    when: they enter a known scam number and tap Check
+    then: a scam verdict is shown
+    tags: [call, journey]
