@@ -22,6 +22,12 @@ async function bootstrapServer(): Promise<Handler> {
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );
+  // The web demo calls this API cross-origin. Scope to CORS_ORIGIN (comma list)
+  // when set; otherwise reflect the request origin (open, fine for a public
+  // read/classify demo with no cookies or auth).
+  app.enableCors({
+    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : true,
+  });
   await app.init();
   return serverlessExpress({ app: expressApp });
 }
