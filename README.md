@@ -34,7 +34,7 @@ Built to demonstrate the stack and engineering practices of the real ScamShield 
 - **Async:** AWS SQS report-intake queue + idempotent worker Lambda
 - **Classifier:** offline heuristic on-device + a server classifier with an LLM hook (deterministic fallback)
 - **Push:** Expo push (APNs/FCM) when a report is confirmed a scam
-- **Data:** PostgreSQL-ready (Neon), OpenSearch-ready for clustering similar reports
+- **Data:** Postgres (node-postgres; Neon's pooled endpoint) when `DATABASE_URL` is set, with an in-memory fallback for CI/local; OpenSearch-ready for clustering
 - **Infra:** AWS CDK (Lambda + API Gateway HTTP API + SQS), GitHub Actions
 - Built on a custom mobile platform template: https://github.com/elleskay/mobile-platform
 
@@ -54,7 +54,7 @@ The API runs live on AWS (`cdk deploy`, reproducible via `infra/cdk`); the brows
 
 **Human-in-the-loop:** a report is `pending` until an admin reviews it in the dashboard; the classifier's call is recorded as a suggestion, and the push to the reporter fires on the admin's verdict, mirroring the real "police verify, then notify" flow.
 
-**Honest limitation:** the report store, stats, and clustering are in-memory (documented as Postgres-ready). On the deployed split Lambda + SQS topology this state is per-instance and ephemeral, so the live stats/cluster counts are best-effort; the logic itself is proven by the single-process integration tests. Production would back this with Postgres/Redis.
+**Persistence:** the report store, idempotent processing, clustering, and stats sit behind a `ReportsStore` boundary with two backends — **Postgres** (`node-postgres`, used when `DATABASE_URL` is set; durable and correct across the split Lambda + SQS topology) and an **in-memory** fallback (CI/local/offline). The Postgres path is proven in CI against a Postgres service container (`SCAM-DB-001`). With the in-memory fallback the live state is per-instance/ephemeral, so set `DATABASE_URL` (a Neon connection string) on the Lambda for durable, multi-instance-correct stats and reports.
 
 The native Android `CallScreeningService` is wired by an Expo config plugin (verified: `expo prebuild` injects it into the manifest and it compiles into the release APK); its block decision is unit-tested, and the on-device call-rejection procedure is in `docs/MOBILE.md`. The iOS Call Directory + Message Filter extensions ship as code but need Apple signing + a device to verify, so they are documented there, not claimed as proven.
 
