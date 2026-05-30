@@ -170,3 +170,23 @@ requirements:
     when: they open the Reports tab
     then: the report is listed with a status badge
     tags: [report, journey]
+
+  # Phase 2: Scam awareness feed (advisories about emerging trends).
+  - id: SCAM-ALERT-001
+    title: The alerts endpoint returns scam advisories
+    category: functional
+    verify: integration
+    severity: medium
+    given: the running API
+    when: a client GETs /alerts
+    then: it responds 200 with a list of advisories, each having a title, body, category, and date
+    tags: [alerts]
+
+  - id: SCAM-ALERT-002
+    title: The Alerts tab renders advisories
+    category: ui
+    verify: component
+    severity: low
+    given: the Alerts screen with advisories available
+    when: it loads
+    then: it renders the advisory cards

@@ -78,6 +78,25 @@ export async function submitReport(text: string, deviceToken?: string): Promise<
   return (await res.json()) as ReportReceipt;
 }
 
+export interface Alert {
+  id: string;
+  title: string;
+  body: string;
+  category: string;
+  date: string;
+}
+
+/** Scam-awareness advisories. Empty on failure. */
+export async function listAlerts(): Promise<Alert[]> {
+  try {
+    const res = await fetch(`${API_URL}/alerts`);
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    return (await res.json()) as Alert[];
+  } catch {
+    return [];
+  }
+}
+
 /** List the calling device's own reports and their status. Empty on failure. */
 export async function listReports(deviceToken: string): Promise<ReportSummary[]> {
   try {
